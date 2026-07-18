@@ -61,12 +61,12 @@ export function TeamOrganigram({ organization, teams, onSelectTeam, onCreateTeam
           </div>
 
           {/* Horizontal bus above the row (only when >1 card in tier) */}
-          <div className="relative mx-auto grid max-w-6xl gap-6 px-2" style={{ gridTemplateColumns: `repeat(${Math.min(Math.max(tier.teams.length, 1), 4)}, minmax(220px, 1fr))` }}>
+          <div className="relative mx-auto flex max-w-6xl flex-wrap justify-center gap-6 px-2">
             {tier.teams.length > 1 && (
               <div className="pointer-events-none absolute left-[10%] right-[10%] -top-3 h-px bg-primary/40" />
             )}
             {tier.teams.map((t) => (
-              <div key={t.teamId} className="relative">
+              <div key={t.teamId} className="relative w-[260px] shrink-0">
                 {/* Drop connector down to card */}
                 <div className="absolute left-1/2 -top-3 h-3 w-px -translate-x-1/2 bg-primary/40" />
                 <button

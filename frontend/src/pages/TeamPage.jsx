@@ -10,7 +10,7 @@ import { AppHeader } from "../components/AppHeader";
 import { Radar } from "../components/Radar";
 import { Legend } from "../components/Legend";
 import { Modal, TextField, SelectField, ActionRow, Toast } from "../components/ui-kit";
-import { Radar as RadarIcon, Save, Compass, Plus, ChevronRight, Target } from "lucide-react";
+import { Radar as RadarIcon, Compass, Plus, ChevronRight, Target, Pencil, ArrowLeft } from "lucide-react";
 
 export default function TeamPage() {
   const { orgId, teamId } = useParams();
@@ -18,20 +18,18 @@ export default function TeamPage() {
 
   const [org, setOrg] = useState(null);
   const [team, setTeam] = useState(null);
-  const [teams, setTeams] = useState([]);
   const [strategies, setStrategies] = useState([]);
   const [changes, setChanges] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
 
   const [zoomed, setZoomed] = useState(null);
   const [selectedChange, setSelectedChange] = useState(null);
   const [showNewChange, setShowNewChange] = useState(false);
+  const [showEditChange, setShowEditChange] = useState(null); // holds the change being edited
   const [showNewStrategy, setShowNewStrategy] = useState(false);
+  const [showEditTeam, setShowEditTeam] = useState(false);
+  const [tab, setTab] = useState("radar"); // "radar" | "strategies"
   const [toast, setToast] = useState(null);
-
-  const [teamDraft, setTeamDraft] = useState({ teamName: "", Context: "", Purpose: "", Level: 1 });
-  const [dirty, setDirty] = useState(false);
 
   const showToast = (msg, kind = "ok") => {
     setToast({ msg, kind });
@@ -52,18 +50,7 @@ export default function TeamPage() {
       setOrg(orgsRes.body.find((o) => o.organizationId === orgId) || null);
     }
     if (teamsRes.ok && Array.isArray(teamsRes.body)) {
-      setTeams(teamsRes.body);
-      const t = teamsRes.body.find((x) => x.teamId === teamId) || null;
-      setTeam(t);
-      if (t) {
-        setTeamDraft({
-          teamName: t.teamName || t.Name || "",
-          Context: t.Context || "",
-          Purpose: t.Purpose || "",
-          Level: t.Level ?? 1,
-        });
-        setDirty(false);
-      }
+      setTeam(teamsRes.body.find((x) => x.teamId === teamId) || null);
     }
     setStrategies(stratRes.ok && Array.isArray(stratRes.body) ? stratRes.body : []);
     setChanges(chgRes.ok && Array.isArray(chgRes.body) ? chgRes.body : []);
@@ -79,29 +66,6 @@ export default function TeamPage() {
     changes.forEach((ch) => (c[toQuadrant(ch.category)] += 1));
     return c;
   }, [changes]);
-
-  async function saveTeam() {
-    if (!dirty) return;
-    setSaving(true);
-    const r = await api.teams.update(orgId, teamId, {
-      teamId,
-      teamName: teamDraft.teamName,
-      Name: teamDraft.teamName,
-      Context: teamDraft.Context,
-      Purpose: teamDraft.Purpose,
-      Level: Number(teamDraft.Level) || 1,
-    });
-    setSaving(false);
-    if (!r.ok) return showToast(r.body?.error || r.error || "Failed to save team", "err");
-    showToast("Team saved");
-    setDirty(false);
-    await load();
-  }
-
-  function updateDraft(patch) {
-    setTeamDraft((d) => ({ ...d, ...patch }));
-    setDirty(true);
-  }
 
   return (
     <div className="min-h-screen pb-16">
@@ -122,161 +86,110 @@ export default function TeamPage() {
           </div>
         ) : (
           <>
-            <div className="mb-8 flex items-start justify-between gap-6">
+            {/* Compact header: team name · level · edit pencil · back */}
+            <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
               <div>
                 <div className="text-[10px] uppercase tracking-[0.24em] text-primary/80">Team workspace</div>
-                <h1 className="mt-2 text-4xl font-semibold tracking-tight" data-testid="team-heading">
-                  {team.teamName || team.Name || "Team"}
-                </h1>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {team.Context ? <span className="mr-3">Context · <span className="text-foreground">{team.Context}</span></span> : null}
-                  Level {team.Level ?? 1}
-                </p>
+                <div className="mt-1 flex flex-wrap items-center gap-3">
+                  <h1 className="text-3xl font-semibold tracking-tight" data-testid="team-heading">
+                    {team.teamName || team.Name || "Team"}
+                  </h1>
+                  <span
+                    className="rounded-full border border-border-strong bg-card-elevated px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em]"
+                    style={{ color: "var(--section-team)" }}
+                    data-testid="team-level-chip"
+                  >
+                    L{team.Level ?? 1}
+                  </span>
+                  <button
+                    onClick={() => setShowEditTeam(true)}
+                    className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[11px] uppercase tracking-wider text-muted-foreground hover:bg-accent hover:text-foreground transition"
+                    data-testid="edit-team-btn"
+                    title="Edit team attributes"
+                  >
+                    <Pencil size={11} /> Edit
+                  </button>
+                </div>
+                {(team.Context || team.Purpose) && (
+                  <div className="mt-1 text-xs text-muted-foreground max-w-3xl">
+                    {team.Context && <>Context · <span className="text-foreground">{team.Context}</span></>}
+                    {team.Purpose && <span className="ml-2 opacity-70">· {team.Purpose}</span>}
+                  </div>
+                )}
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => navigate(`/workspace/${encodeURIComponent(orgId)}`)}
-                  className="rounded-full border border-border px-3 py-1.5 text-xs hover:bg-accent transition"
-                  data-testid="back-to-org-btn"
-                >
-                  ← Organigram
-                </button>
-              </div>
+              <button
+                onClick={() => navigate(`/workspace/${encodeURIComponent(orgId)}`)}
+                className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs hover:bg-accent transition"
+                data-testid="back-to-org-btn"
+              >
+                <ArrowLeft size={12} /> Organigram
+              </button>
             </div>
 
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-[380px_1fr]">
-              {/* Left column: Team attributes + Strategies */}
-              <div className="space-y-6">
-                {/* Team attributes editor */}
-                <div className="section-card section-team" data-testid="team-attributes-card">
-                  <div className="mb-3 flex items-center justify-between">
-                    <div>
-                      <div className="text-sm font-semibold">Team attributes</div>
-                      <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Edit &amp; save</div>
-                    </div>
-                    <button
-                      onClick={saveTeam}
-                      disabled={!dirty || saving}
-                      className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-primary-foreground hover:brightness-110 disabled:opacity-40 transition btn-glow"
-                      data-testid="save-team-btn"
-                    >
-                      <Save size={12} /> {saving ? "Saving…" : dirty ? "Save" : "Saved"}
-                    </button>
+            {/* Tab switcher */}
+            <div className="mb-4 flex items-center gap-1 rounded-full border border-border bg-card-elevated p-1 w-fit" role="tablist" data-testid="team-tabs">
+              <button
+                role="tab"
+                aria-selected={tab === "radar"}
+                onClick={() => setTab("radar")}
+                className={`inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-wider transition ${
+                  tab === "radar"
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+                data-testid="tab-radar"
+              >
+                <RadarIcon size={12} /> Radar
+                <span className={`ml-1 rounded-full px-1.5 py-0.5 text-[10px] ${tab === "radar" ? "bg-primary-foreground/20" : "bg-muted"}`}>{changes.length}</span>
+              </button>
+              <button
+                role="tab"
+                aria-selected={tab === "strategies"}
+                onClick={() => setTab("strategies")}
+                className={`inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-wider transition ${
+                  tab === "strategies"
+                    ? "text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+                style={tab === "strategies" ? { background: "var(--section-strategy)" } : undefined}
+                data-testid="tab-strategies"
+              >
+                <Compass size={12} /> Strategies
+                <span className={`ml-1 rounded-full px-1.5 py-0.5 text-[10px] ${tab === "strategies" ? "bg-primary-foreground/20" : "bg-muted"}`}>{strategies.length}</span>
+              </button>
+            </div>
+
+            {tab === "radar" ? (
+              <div className="section-card p-6" data-testid="radar-card">
+                <div className="mb-4 flex items-start justify-between gap-4">
+                  <div>
+                    <div className="text-[10px] uppercase tracking-[0.24em] text-primary/80">Radar</div>
+                    <h2 className="mt-1 text-xl font-semibold tracking-tight">Environmental view</h2>
+                    <p className="text-xs text-muted-foreground">
+                      Click a quadrant to zoom · click a point to view &amp; edit.
+                    </p>
                   </div>
-                  <div className="space-y-3">
-                    <TextField
-                      label="Team name"
-                      value={teamDraft.teamName}
-                      onChange={(v) => updateDraft({ teamName: v })}
-                      testId="team-name-input"
-                    />
-                    <div className="grid grid-cols-[1fr_110px] gap-3">
-                      <TextField
-                        label="Context"
-                        value={teamDraft.Context}
-                        onChange={(v) => updateDraft({ Context: v })}
-                        placeholder="e.g. Growth"
-                        testId="team-context-input"
-                      />
-                      <label className="block">
-                        <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Level</span>
-                        <input
-                          type="number"
-                          min={1}
-                          step={1}
-                          value={teamDraft.Level}
-                          onChange={(e) => updateDraft({ Level: e.target.value })}
-                          className="w-full rounded-md border border-border bg-input px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/25 transition"
-                          data-testid="team-level-input"
-                        />
-                      </label>
-                    </div>
-                    <TextField
-                      label="Purpose"
-                      value={teamDraft.Purpose}
-                      onChange={(v) => updateDraft({ Purpose: v })}
-                      placeholder="Why this team exists…"
-                      multiline
-                      rows={3}
-                      testId="team-purpose-input"
-                    />
-                  </div>
+                  <button
+                    onClick={() => setShowNewChange(true)}
+                    className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-xs font-semibold uppercase tracking-wider text-primary-foreground hover:brightness-110 transition btn-glow"
+                    data-testid="detect-change-btn"
+                  >
+                    <Plus size={13} /> Detect
+                  </button>
                 </div>
 
-                {/* Strategies list */}
-                <div className="rounded-2xl border border-border bg-card/70 backdrop-blur p-5" data-testid="strategies-card">
-                  <div className="mb-3 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Compass size={14} className="text-primary" />
-                      <div>
-                        <div className="text-sm font-semibold">Strategies</div>
-                        <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                          {strategies.length} defined
-                        </div>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => setShowNewStrategy(true)}
-                      className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[11px] hover:bg-accent transition"
-                      data-testid="new-strategy-btn"
-                    >
-                      <Plus size={12} /> New
-                    </button>
-                  </div>
-
-                  {strategies.length === 0 ? (
-                    <div className="rounded-lg border border-dashed border-border p-4 text-center text-xs text-muted-foreground">
-                      No strategies yet.
-                    </div>
-                  ) : (
-                    <ul className="space-y-1.5">
-                      {strategies.map((s) => (
-                        <li key={s.strategyId}>
-                          <button
-                            onClick={() => navigate(`/workspace/${encodeURIComponent(orgId)}/team/${encodeURIComponent(teamId)}/strategy/${encodeURIComponent(s.strategyId)}`)}
-                            className="card-lift tile w-full flex items-center justify-between gap-2 px-3 py-2.5 text-left transition"
-                            data-testid={`strategy-row-${s.strategyId}`}
-                          >
-                            <div className="flex items-center gap-2">
-                              <Target size={14} style={{ color: "var(--section-strategy)" }} />
-                              <div>
-                                <div className="text-sm font-medium">{s.strategyName}</div>
-                                {s.strategyTimeframe && (
-                                  <div className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-                                    {s.strategyTimeframe}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                            <ChevronRight size={14} className="text-muted-foreground" />
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
+                <div className="flex justify-center">
+                  <Radar
+                    changes={changes}
+                    size={720}
+                    onSelectQuadrant={(q) => setZoomed(q)}
+                    onSelectChange={(c) => setSelectedChange(c)}
+                  />
                 </div>
 
-                {/* Environmental changes summary */}
-                <div className="rounded-2xl border border-border bg-card/70 backdrop-blur p-5" data-testid="changes-summary-card">
-                  <div className="mb-3 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <RadarIcon size={14} className="text-primary" />
-                      <div>
-                        <div className="text-sm font-semibold">Environmental changes</div>
-                        <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                          {changes.length} plotted
-                        </div>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => setShowNewChange(true)}
-                      className="rounded-full bg-primary px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-primary-foreground hover:brightness-110 transition btn-glow"
-                      data-testid="detect-change-btn"
-                    >
-                      + Detect
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
+                {/* Quadrant counts + inline legend */}
+                <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-[1fr_auto]">
+                  <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
                     {QUADRANTS.map((q) => (
                       <button
                         key={q}
@@ -289,32 +202,69 @@ export default function TeamPage() {
                       </button>
                     ))}
                   </div>
+                  <Legend />
                 </div>
-
-                <Legend />
               </div>
-
-              {/* Right column: Radar */}
-              <div className="section-card p-6" data-testid="radar-card">
-                <div className="mb-4 flex items-start justify-between">
+            ) : (
+              <div className="section-card section-strategy p-6" data-testid="strategies-card">
+                <div className="mb-4 flex items-start justify-between gap-4">
                   <div>
-                    <div className="text-[10px] uppercase tracking-[0.24em] text-primary/80">Radar</div>
-                    <h2 className="mt-1 text-xl font-semibold tracking-tight">Environmental view</h2>
+                    <div className="text-[10px] uppercase tracking-[0.24em]" style={{ color: "var(--section-strategy)" }}>Strategies</div>
+                    <h2 className="mt-1 text-xl font-semibold tracking-tight">Team strategies</h2>
                     <p className="text-xs text-muted-foreground">
-                      Click a quadrant to zoom · click a point for details.
+                      Open a strategy to plan initiatives with the 4-step framework.
                     </p>
                   </div>
+                  <button
+                    onClick={() => setShowNewStrategy(true)}
+                    className="inline-flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-wider text-primary-foreground hover:brightness-110 transition btn-glow"
+                    style={{ background: "var(--section-strategy)" }}
+                    data-testid="new-strategy-btn"
+                  >
+                    <Plus size={13} /> New strategy
+                  </button>
                 </div>
-                <div className="flex justify-center">
-                  <Radar
-                    changes={changes}
-                    size={620}
-                    onSelectQuadrant={(q) => setZoomed(q)}
-                    onSelectChange={(c) => setSelectedChange(c)}
-                  />
-                </div>
+
+                {strategies.length === 0 ? (
+                  <div className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
+                    No strategies yet. Create one to plan initiatives.
+                  </div>
+                ) : (
+                  <ul className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
+                    {strategies.map((s) => (
+                      <li key={s.strategyId}>
+                        <button
+                          onClick={() => navigate(`/workspace/${encodeURIComponent(orgId)}/team/${encodeURIComponent(teamId)}/strategy/${encodeURIComponent(s.strategyId)}`)}
+                          className="card-lift tile w-full flex items-center justify-between gap-2 p-4 text-left transition"
+                          data-testid={`strategy-row-${s.strategyId}`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div
+                              className="h-9 w-9 rounded-lg flex items-center justify-center"
+                              style={{
+                                background: "color-mix(in oklch, var(--section-strategy) 20%, transparent)",
+                                boxShadow: "inset 0 0 0 1px color-mix(in oklch, var(--section-strategy) 55%, transparent)",
+                              }}
+                            >
+                              <Target size={16} style={{ color: "var(--section-strategy)" }} />
+                            </div>
+                            <div>
+                              <div className="text-sm font-semibold">{s.strategyName}</div>
+                              {s.strategyTimeframe && (
+                                <div className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+                                  {s.strategyTimeframe}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          <ChevronRight size={16} className="text-muted-foreground" />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
-            </div>
+            )}
           </>
         )}
       </main>
@@ -361,7 +311,11 @@ export default function TeamPage() {
       )}
 
       {selectedChange && (
-        <Modal title={selectedChange.envChangeTitle} onClose={() => setSelectedChange(null)} testId="change-detail-modal">
+        <Modal
+          title={selectedChange.envChangeTitle}
+          onClose={() => setSelectedChange(null)}
+          testId="change-detail-modal"
+        >
           <div className="space-y-1 text-sm">
             {[
               ["Category (quadrant)", toQuadrant(selectedChange.category)],
@@ -379,15 +333,44 @@ export default function TeamPage() {
               </div>
             ))}
           </div>
+          <div className="mt-5 flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setSelectedChange(null)}
+              className="rounded-md border border-border px-4 py-2 text-sm hover:bg-accent transition"
+              data-testid="change-detail-close-btn"
+            >
+              Close
+            </button>
+            <button
+              type="button"
+              onClick={() => { setShowEditChange(selectedChange); setSelectedChange(null); }}
+              className="inline-flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-sm font-semibold uppercase tracking-wider text-primary-foreground hover:brightness-110 transition btn-glow"
+              data-testid="edit-change-btn"
+            >
+              <Pencil size={12} /> Edit
+            </button>
+          </div>
         </Modal>
       )}
 
       {showNewChange && (
-        <NewChangeModal
+        <ChangeFormModal
           orgId={orgId}
           teamId={teamId}
           onClose={() => setShowNewChange(false)}
-          onCreated={async () => { await load(); showToast("Environmental change detected"); }}
+          onSaved={async () => { await load(); showToast("Environmental change detected"); }}
+          onError={(m) => showToast(m, "err")}
+        />
+      )}
+
+      {showEditChange && (
+        <ChangeFormModal
+          orgId={orgId}
+          teamId={teamId}
+          existing={showEditChange}
+          onClose={() => setShowEditChange(null)}
+          onSaved={async () => { await load(); showToast("Environmental change updated"); }}
           onError={(m) => showToast(m, "err")}
         />
       )}
@@ -402,48 +385,115 @@ export default function TeamPage() {
         />
       )}
 
+      {showEditTeam && team && (
+        <EditTeamModal
+          orgId={orgId}
+          team={team}
+          onClose={() => setShowEditTeam(false)}
+          onSaved={async () => { await load(); showToast("Team saved"); }}
+          onError={(m) => showToast(m, "err")}
+        />
+      )}
+
       <Toast toast={toast} />
     </div>
   );
 }
 
-function NewChangeModal({ orgId, teamId, onClose, onCreated, onError }) {
-  const [title, setTitle] = useState("");
-  const [category, setCategory] = useState("BUSINESS");
-  const [lifecycle, setLifecycle] = useState("DETECTED");
-  const [impact, setImpact] = useState("MEDIUM");
-  const [effort, setEffort] = useState("MEDIUM");
-  const [nature, setNature] = useState("THREAT");
-  const [detect, setDetect] = useState("");
-  const [assess, setAssess] = useState("");
-  const [respond, setRespond] = useState("");
+function EditTeamModal({ orgId, team, onClose, onSaved, onError }) {
+  const [name, setName] = useState(team.teamName || team.Name || "");
+  const [context, setContext] = useState(team.Context || "");
+  const [purpose, setPurpose] = useState(team.Purpose || "");
+  const [level, setLevel] = useState(team.Level ?? 1);
   const [loading, setLoading] = useState(false);
 
   async function submit(e) {
     e.preventDefault();
     setLoading(true);
-    const r = await api.environmentalChanges.create(orgId, teamId, {
-      envChangeId: generateId(),
-      envChangeTitle: title,
-      category, detect, assess, respond, impact, effort, nature, lifecycle,
+    const r = await api.teams.update(orgId, team.teamId, {
+      teamId: team.teamId,
+      teamName: name,
+      Name: name,
+      Context: context,
+      Purpose: purpose,
+      Level: Number(level) || 1,
     });
     setLoading(false);
-    if (!r.ok) return onError(r.body?.error || r.error || "Failed to create change");
-    onCreated();
+    if (!r.ok) return onError(r.body?.error || r.error || "Failed to save team");
+    onSaved();
     onClose();
   }
 
   return (
-    <Modal title="Detect environmental change" onClose={onClose} testId="new-change-modal">
+    <Modal title="Edit team attributes" onClose={onClose} testId="edit-team-modal">
       <form onSubmit={submit} className="space-y-3">
-        <TextField label="Title" value={title} onChange={setTitle} placeholder="e.g. Regulatory shift in EU" testId="new-change-title-input" />
+        <TextField label="Team name" value={name} onChange={setName} testId="team-name-input" />
+        <div className="grid grid-cols-[1fr_110px] gap-3">
+          <TextField label="Context" value={context} onChange={setContext} placeholder="e.g. Growth" testId="team-context-input" />
+          <label className="block">
+            <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Level</span>
+            <input
+              type="number"
+              min={1}
+              step={1}
+              value={level}
+              onChange={(e) => setLevel(e.target.value)}
+              className="w-full rounded-md border border-border bg-input px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/25 transition"
+              data-testid="team-level-input"
+            />
+          </label>
+        </div>
+        <TextField label="Purpose" value={purpose} onChange={setPurpose} placeholder="Why this team exists…" multiline rows={3} testId="team-purpose-input" />
+        <ActionRow onCancel={onClose} submitLabel="Save" loading={loading} testIdPrefix="edit-team" />
+      </form>
+    </Modal>
+  );
+}
+
+function ChangeFormModal({ orgId, teamId, existing, onClose, onSaved, onError }) {
+  const isEdit = Boolean(existing);
+  const [title, setTitle] = useState(existing?.envChangeTitle || "");
+  const [category, setCategory] = useState(existing ? toQuadrant(existing.category) : "BUSINESS");
+  const [lifecycle, setLifecycle] = useState(existing ? toState(existing) : "DETECTED");
+  const [impact, setImpact] = useState(existing ? toImpact(existing.impact) : "MEDIUM");
+  const [effort, setEffort] = useState(existing ? toEffort(existing.effort) : "MEDIUM");
+  const [nature, setNature] = useState(existing ? toNature(existing.nature) : "THREAT");
+  const [detect, setDetect] = useState(existing?.detect ?? "");
+  const [assess, setAssess] = useState(existing?.assess ?? "");
+  const [respond, setRespond] = useState(existing?.respond ?? "");
+  const [loading, setLoading] = useState(false);
+
+  async function submit(e) {
+    e.preventDefault();
+    setLoading(true);
+    const payload = {
+      envChangeTitle: title,
+      category, detect, assess, respond, impact, effort, nature, lifecycle,
+    };
+    const r = isEdit
+      ? await api.environmentalChanges.update(orgId, teamId, existing.envChangeId, payload)
+      : await api.environmentalChanges.create(orgId, teamId, { envChangeId: generateId(), ...payload });
+    setLoading(false);
+    if (!r.ok) return onError(r.body?.error || r.error || (isEdit ? "Failed to update change" : "Failed to create change"));
+    onSaved();
+    onClose();
+  }
+
+  return (
+    <Modal
+      title={isEdit ? `Edit environmental change` : "Detect environmental change"}
+      onClose={onClose}
+      testId={isEdit ? "edit-change-modal" : "new-change-modal"}
+    >
+      <form onSubmit={submit} className="space-y-3">
+        <TextField label="Title" value={title} onChange={setTitle} placeholder="e.g. Regulatory shift in EU" testId="change-title-input" />
         <TextField label="What was detected?" value={detect} onChange={setDetect} placeholder="Describe the signal…" multiline />
         <div className="grid grid-cols-2 gap-3">
-          <SelectField label="Category / Quadrant" value={category} options={QUADRANTS} onChange={setCategory} testId="new-change-category-select" />
-          <SelectField label="Lifecycle state" value={lifecycle} options={STATES} onChange={setLifecycle} />
-          <SelectField label="Impact" value={impact} options={IMPACTS} onChange={setImpact} />
-          <SelectField label="Effort" value={effort} options={EFFORTS} onChange={setEffort} />
-          <SelectField label="Nature" value={nature} options={NATURES} onChange={setNature} />
+          <SelectField label="Category / Quadrant" value={category} options={QUADRANTS} onChange={setCategory} testId="change-category-select" />
+          <SelectField label="Lifecycle state" value={lifecycle} options={STATES} onChange={setLifecycle} testId="change-lifecycle-select" />
+          <SelectField label="Impact" value={impact} options={IMPACTS} onChange={setImpact} testId="change-impact-select" />
+          <SelectField label="Effort" value={effort} options={EFFORTS} onChange={setEffort} testId="change-effort-select" />
+          <SelectField label="Nature" value={nature} options={NATURES} onChange={setNature} testId="change-nature-select" />
         </div>
         <TextField label="Assessment" value={assess} onChange={setAssess} placeholder="Initial analysis…" multiline />
         <TextField label="Response plan" value={respond} onChange={setRespond} placeholder="Planned response…" multiline />
@@ -452,7 +502,7 @@ function NewChangeModal({ orgId, teamId, onClose, onCreated, onError }) {
           <strong className="text-foreground">{lifecycle}</strong> · {impact} impact · {effort} effort ·{" "}
           {nature === "THREAT" ? "triangle" : "circle"}
         </div>
-        <ActionRow onCancel={onClose} submitLabel="Detect change" loading={loading} testIdPrefix="new-change" />
+        <ActionRow onCancel={onClose} submitLabel={isEdit ? "Save changes" : "Detect change"} loading={loading} testIdPrefix={isEdit ? "edit-change" : "new-change"} />
       </form>
     </Modal>
   );

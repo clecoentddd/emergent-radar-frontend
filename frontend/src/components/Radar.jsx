@@ -168,10 +168,20 @@ export function Radar({
 
         {points.map((p, i) => {
           const dim = zoomedQuadrant && zoomedQuadrant !== p.quadrant;
+          // Compute label offset — push away from center so the label doesn't overlap the point
+          const dx = p.x - cx;
+          const dy = p.y - cy;
+          const dist = Math.max(1, Math.hypot(dx, dy));
+          const ox = (dx / dist) * (p.radius + 5);
+          const oy = (dy / dist) * (p.radius + 5);
+          const labelX = p.x + ox;
+          const labelY = p.y + oy + 3;
+          const anchor = ox >= 0 ? "start" : "end";
+          const title = p.change.envChangeTitle || "";
+          const short = title.length > 26 ? title.slice(0, 24) + "…" : title;
           return (
             <g
               key={p.change.envChangeId || i}
-              transform={`translate(${p.x} ${p.y})`}
               opacity={dim ? 0.15 : 1}
               className="cursor-pointer"
               onMouseEnter={() => setHover(p)}
@@ -179,11 +189,39 @@ export function Radar({
               onClick={() => onSelectChange?.(p.change)}
               data-testid={`radar-point-${p.change.envChangeId || i}`}
             >
-              {p.nature === "OPPORTUNITY" ? (
-                <circle r={p.radius} fill={p.color} stroke="oklch(1 0 0 / 60%)" strokeWidth={1} />
-              ) : (
-                <polygon points={trianglePoints(p.radius)} fill={p.color} stroke="oklch(1 0 0 / 60%)" strokeWidth={1} />
-              )}
+              <g transform={`translate(${p.x} ${p.y})`}>
+                {p.nature === "OPPORTUNITY" ? (
+                  <circle r={p.radius} fill={p.color} stroke="oklch(1 0 0 / 60%)" strokeWidth={1} />
+                ) : (
+                  <polygon points={trianglePoints(p.radius)} fill={p.color} stroke="oklch(1 0 0 / 60%)" strokeWidth={1} />
+                )}
+              </g>
+              {/* Halo behind label for readability */}
+              <text
+                x={labelX}
+                y={labelY}
+                textAnchor={anchor}
+                fontSize={10}
+                fontFamily='"Space Grotesk", ui-sans-serif, system-ui'
+                fill="oklch(0.10 0.02 260)"
+                stroke="oklch(0.10 0.02 260)"
+                strokeWidth={3}
+                strokeOpacity={0.85}
+                paintOrder="stroke"
+              >
+                {short}
+              </text>
+              <text
+                x={labelX}
+                y={labelY}
+                textAnchor={anchor}
+                fontSize={10}
+                fontWeight={500}
+                fontFamily='"Space Grotesk", ui-sans-serif, system-ui'
+                fill="oklch(0.98 0.005 240)"
+              >
+                {short}
+              </text>
             </g>
           );
         })}

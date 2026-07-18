@@ -148,7 +148,7 @@ export default function TeamPage() {
               {/* Left column: Team attributes + Strategies */}
               <div className="space-y-6">
                 {/* Team attributes editor */}
-                <div className="rounded-2xl border border-border bg-card/70 backdrop-blur p-5" data-testid="team-attributes-card">
+                <div className="section-card section-team" data-testid="team-attributes-card">
                   <div className="mb-3 flex items-center justify-between">
                     <div>
                       <div className="text-sm font-semibold">Team attributes</div>
@@ -234,11 +234,11 @@ export default function TeamPage() {
                         <li key={s.strategyId}>
                           <button
                             onClick={() => navigate(`/workspace/${encodeURIComponent(orgId)}/team/${encodeURIComponent(teamId)}/strategy/${encodeURIComponent(s.strategyId)}`)}
-                            className="card-lift w-full flex items-center justify-between gap-2 rounded-xl border border-border bg-background/40 px-3 py-2.5 text-left transition"
+                            className="card-lift tile w-full flex items-center justify-between gap-2 px-3 py-2.5 text-left transition"
                             data-testid={`strategy-row-${s.strategyId}`}
                           >
                             <div className="flex items-center gap-2">
-                              <Target size={14} className="text-primary/80" />
+                              <Target size={14} style={{ color: "var(--section-strategy)" }} />
                               <div>
                                 <div className="text-sm font-medium">{s.strategyName}</div>
                                 {s.strategyTimeframe && (
@@ -281,7 +281,7 @@ export default function TeamPage() {
                       <button
                         key={q}
                         onClick={() => setZoomed(q)}
-                        className="rounded-lg border border-border bg-background/40 px-3 py-2 text-left transition hover:bg-accent/40"
+                        className="tile px-3 py-2 text-left transition hover:bg-accent/40"
                         data-testid={`quadrant-count-${q}`}
                       >
                         <div className="text-[10px] font-bold tracking-[0.18em]" style={{ color: quadrantColor[q] }}>{q}</div>
@@ -295,7 +295,7 @@ export default function TeamPage() {
               </div>
 
               {/* Right column: Radar */}
-              <div className="rounded-2xl border border-border bg-card/70 backdrop-blur p-6" data-testid="radar-card">
+              <div className="section-card p-6" data-testid="radar-card">
                 <div className="mb-4 flex items-start justify-between">
                   <div>
                     <div className="text-[10px] uppercase tracking-[0.24em] text-primary/80">Radar</div>

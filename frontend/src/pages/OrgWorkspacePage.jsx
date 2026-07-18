@@ -99,7 +99,7 @@ function NewTeamModal({ orgId, onClose, onCreated, onError }) {
   const [name, setName] = useState("");
   const [context, setContext] = useState("");
   const [purpose, setPurpose] = useState("");
-  const [level, setLevel] = useState(1);
+  const [level, setLevel] = useState(0);
   const [loading, setLoading] = useState(false);
   async function submit(e) {
     e.preventDefault();
@@ -109,7 +109,7 @@ function NewTeamModal({ orgId, onClose, onCreated, onError }) {
       teamName: name,
       Context: context,
       Purpose: purpose,
-      Level: Number(level) || 1,
+      Level: level !== "" ? Number(level) : 0,
     });
     setLoading(false);
     if (!r.ok) return onError(r.body?.error || r.error || "Failed to create team");
@@ -126,7 +126,7 @@ function NewTeamModal({ orgId, onClose, onCreated, onError }) {
             <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Level</span>
             <input
               type="number"
-              min={1}
+              min={0}
               step={1}
               value={level}
               onChange={(e) => setLevel(e.target.value)}

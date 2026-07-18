@@ -99,7 +99,7 @@ export default function TeamPage() {
                     style={{ color: "var(--section-team)" }}
                     data-testid="team-level-chip"
                   >
-                    L{team.Level ?? 1}
+                    L{team.Level ?? 0}
                   </span>
                   <button
                     onClick={() => setShowEditTeam(true)}
@@ -404,7 +404,7 @@ function EditTeamModal({ orgId, team, onClose, onSaved, onError }) {
   const [name, setName] = useState(team.teamName || team.Name || "");
   const [context, setContext] = useState(team.Context || "");
   const [purpose, setPurpose] = useState(team.Purpose || "");
-  const [level, setLevel] = useState(team.Level ?? 1);
+  const [level, setLevel] = useState(team.Level !== undefined && team.Level !== null ? team.Level : 0);
   const [loading, setLoading] = useState(false);
 
   async function submit(e) {
@@ -416,7 +416,7 @@ function EditTeamModal({ orgId, team, onClose, onSaved, onError }) {
       Name: name,
       Context: context,
       Purpose: purpose,
-      Level: Number(level) || 1,
+      Level: level !== "" ? Number(level) : 0,
     });
     setLoading(false);
     if (!r.ok) return onError(r.body?.error || r.error || "Failed to save team");

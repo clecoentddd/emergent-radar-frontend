@@ -87,7 +87,7 @@ export function TeamOrganigram({ organization, teams, onSelectTeam, onCreateTeam
                   )}
                   <div className="mt-3 flex items-center justify-between border-t border-border/60 pt-3">
                     <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                      Level {t.Level ?? 1}
+                      Level {t.Level ?? 0}
                     </span>
                     <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary opacity-0 group-hover:opacity-100 transition">
                       Open →

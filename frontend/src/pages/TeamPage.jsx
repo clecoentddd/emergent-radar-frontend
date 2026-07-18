@@ -30,7 +30,7 @@ export default function TeamPage() {
   const [showNewStrategy, setShowNewStrategy] = useState(false);
   const [toast, setToast] = useState(null);
 
-  const [teamDraft, setTeamDraft] = useState({ teamName: "", Context: "", Purpose: "" });
+  const [teamDraft, setTeamDraft] = useState({ teamName: "", Context: "", Purpose: "", Level: 1 });
   const [dirty, setDirty] = useState(false);
 
   const showToast = (msg, kind = "ok") => {
@@ -60,6 +60,7 @@ export default function TeamPage() {
           teamName: t.teamName || t.Name || "",
           Context: t.Context || "",
           Purpose: t.Purpose || "",
+          Level: t.Level ?? 1,
         });
         setDirty(false);
       }
@@ -85,9 +86,10 @@ export default function TeamPage() {
     const r = await api.teams.update(orgId, teamId, {
       teamId,
       teamName: teamDraft.teamName,
+      Name: teamDraft.teamName,
       Context: teamDraft.Context,
       Purpose: teamDraft.Purpose,
-      Level: team?.Level ?? 1,
+      Level: Number(teamDraft.Level) || 1,
     });
     setSaving(false);
     if (!r.ok) return showToast(r.body?.error || r.error || "Failed to save team", "err");
@@ -168,13 +170,27 @@ export default function TeamPage() {
                       onChange={(v) => updateDraft({ teamName: v })}
                       testId="team-name-input"
                     />
-                    <TextField
-                      label="Context"
-                      value={teamDraft.Context}
-                      onChange={(v) => updateDraft({ Context: v })}
-                      placeholder="e.g. Growth"
-                      testId="team-context-input"
-                    />
+                    <div className="grid grid-cols-[1fr_110px] gap-3">
+                      <TextField
+                        label="Context"
+                        value={teamDraft.Context}
+                        onChange={(v) => updateDraft({ Context: v })}
+                        placeholder="e.g. Growth"
+                        testId="team-context-input"
+                      />
+                      <label className="block">
+                        <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Level</span>
+                        <input
+                          type="number"
+                          min={1}
+                          step={1}
+                          value={teamDraft.Level}
+                          onChange={(e) => updateDraft({ Level: e.target.value })}
+                          className="w-full rounded-md border border-border bg-input px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/25 transition"
+                          data-testid="team-level-input"
+                        />
+                      </label>
+                    </div>
                     <TextField
                       label="Purpose"
                       value={teamDraft.Purpose}

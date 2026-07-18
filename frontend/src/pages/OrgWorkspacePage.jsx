@@ -99,6 +99,7 @@ function NewTeamModal({ orgId, onClose, onCreated, onError }) {
   const [name, setName] = useState("");
   const [context, setContext] = useState("");
   const [purpose, setPurpose] = useState("");
+  const [level, setLevel] = useState(1);
   const [loading, setLoading] = useState(false);
   async function submit(e) {
     e.preventDefault();
@@ -108,7 +109,7 @@ function NewTeamModal({ orgId, onClose, onCreated, onError }) {
       teamName: name,
       Context: context,
       Purpose: purpose,
-      Level: 1,
+      Level: Number(level) || 1,
     });
     setLoading(false);
     if (!r.ok) return onError(r.body?.error || r.error || "Failed to create team");
@@ -119,7 +120,21 @@ function NewTeamModal({ orgId, onClose, onCreated, onError }) {
     <Modal title="New team" onClose={onClose} testId="new-team-modal">
       <form onSubmit={submit} className="space-y-3">
         <TextField label="Team name" value={name} onChange={setName} placeholder="e.g. Growth Team" testId="new-team-name-input" />
-        <TextField label="Context" value={context} onChange={setContext} placeholder="e.g. Growth" testId="new-team-context-input" />
+        <div className="grid grid-cols-[1fr_120px] gap-3">
+          <TextField label="Context" value={context} onChange={setContext} placeholder="e.g. Growth" testId="new-team-context-input" />
+          <label className="block">
+            <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Level</span>
+            <input
+              type="number"
+              min={1}
+              step={1}
+              value={level}
+              onChange={(e) => setLevel(e.target.value)}
+              className="w-full rounded-md border border-border bg-input px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/25 transition"
+              data-testid="new-team-level-input"
+            />
+          </label>
+        </div>
         <TextField label="Purpose" value={purpose} onChange={setPurpose} placeholder="Team purpose" testId="new-team-purpose-input" multiline />
         <ActionRow onCancel={onClose} submitLabel="Create team" loading={loading} testIdPrefix="new-team" />
       </form>

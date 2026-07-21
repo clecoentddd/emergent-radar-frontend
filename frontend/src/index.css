@@ -79,9 +79,9 @@ code, .font-mono {
   }
   body {
     background:
-      radial-gradient(ellipse at top left, oklch(0.24 0.06 260) 0%, transparent 45%),
-      radial-gradient(circle at 85% 85%, oklch(0.22 0.10 195 / 35%) 0%, transparent 40%),
-      radial-gradient(circle at 15% 90%, oklch(0.22 0.10 305 / 25%) 0%, transparent 40%),
+      var(--page-glow-1, radial-gradient(ellipse at top left, oklch(0.24 0.06 260) 0%, transparent 45%)),
+      var(--page-glow-2, radial-gradient(circle at 85% 85%, oklch(0.22 0.10 195 / 35%) 0%, transparent 40%)),
+      var(--page-glow-3, radial-gradient(circle at 15% 90%, oklch(0.22 0.10 305 / 25%) 0%, transparent 40%)),
       var(--background);
     background-attachment: fixed;
     color: var(--foreground);

@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { clearAllAuth, getConfig } from "../lib/stradar-api";
 import { RadarLogo } from "./RadarLogo";
+import { ThemeSwitcher } from "./ThemeSwitcher";
 import { LogOut, ArrowLeftRight } from "lucide-react";
 
 export function AppHeader({ organizationName, onSwitchOrg, breadcrumbs = [], right = null }) {
@@ -54,6 +55,7 @@ export function AppHeader({ organizationName, onSwitchOrg, breadcrumbs = [], rig
 
       <div className="flex items-center gap-2 text-xs">
         {right}
+        <ThemeSwitcher />
         {organizationName && (
           <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full border border-border bg-background/40">
             <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />

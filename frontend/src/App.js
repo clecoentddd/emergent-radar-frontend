@@ -1,4 +1,5 @@
 import "./App.css";
+import { useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import LoginPage from "./pages/LoginPage";
 import OrganizationsPage from "./pages/OrganizationsPage";
@@ -6,6 +7,7 @@ import OrgWorkspacePage from "./pages/OrgWorkspacePage";
 import TeamPage from "./pages/TeamPage";
 import StrategyPage from "./pages/StrategyPage";
 import { getConfig } from "./lib/stradar-api";
+import { applyTheme, getStoredTheme } from "./lib/themes";
 
 function RootRedirect() {
   const c = getConfig();
@@ -13,6 +15,9 @@ function RootRedirect() {
 }
 
 function App() {
+  useEffect(() => {
+    applyTheme(getStoredTheme());
+  }, []);
   return (
     <div className="App">
       <BrowserRouter>

@@ -84,7 +84,7 @@ export function Radar({
         <defs>
           <radialGradient id="radarDiskBg" cx="50%" cy="50%" r="50%">
             <stop offset="0%" stopColor="var(--radar-bg)" />
-            <stop offset="100%" stopColor="oklch(0.10 0.03 250)" />
+            <stop offset="100%" stopColor="var(--radar-bg-inner, var(--radar-bg))" />
           </radialGradient>
         </defs>
         <circle cx={cx} cy={cy} r={R} fill="url(#radarDiskBg)" />
@@ -140,7 +140,7 @@ export function Radar({
           <text
             key={l.q}
             x={l.x} y={l.y}
-            fill="oklch(0.98 0.005 240)"
+            fill="var(--foreground)"
             fontSize={14}
             fontWeight={700}
             letterSpacing={2.5}
@@ -191,9 +191,9 @@ export function Radar({
             >
               <g transform={`translate(${p.x} ${p.y})`}>
                 {p.nature === "OPPORTUNITY" ? (
-                  <circle r={p.radius} fill={p.color} stroke="oklch(1 0 0 / 60%)" strokeWidth={1} />
+                  <circle r={p.radius} fill={p.color} stroke="var(--foreground)" strokeOpacity="0.5" strokeWidth={1} />
                 ) : (
-                  <polygon points={trianglePoints(p.radius)} fill={p.color} stroke="oklch(1 0 0 / 60%)" strokeWidth={1} />
+                  <polygon points={trianglePoints(p.radius)} fill={p.color} stroke="var(--foreground)" strokeOpacity="0.5" strokeWidth={1} />
                 )}
               </g>
               {/* Halo behind label for readability */}
@@ -203,8 +203,8 @@ export function Radar({
                 textAnchor={anchor}
                 fontSize={10}
                 fontFamily='"Space Grotesk", ui-sans-serif, system-ui'
-                fill="oklch(0.10 0.02 260)"
-                stroke="oklch(0.10 0.02 260)"
+                fill="var(--background)"
+                stroke="var(--background)"
                 strokeWidth={3}
                 strokeOpacity={0.85}
                 paintOrder="stroke"
@@ -218,7 +218,7 @@ export function Radar({
                 fontSize={10}
                 fontWeight={500}
                 fontFamily='"Space Grotesk", ui-sans-serif, system-ui'
-                fill="oklch(0.98 0.005 240)"
+                fill="var(--foreground)"
               >
                 {short}
               </text>

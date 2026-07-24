@@ -79,19 +79,39 @@ export function InitiativesList({ orgId, teamId, strategy, accentColor, onToast 
             return (
               <li
                 key={i.initiativeId}
-                className="rounded-lg border border-border bg-background/40"
+                className="rounded-lg border transition"
+                style={isOpen
+                  ? {
+                      background: `color-mix(in oklch, ${accentColor} 10%, transparent)`,
+                      borderColor: `color-mix(in oklch, ${accentColor} 55%, transparent)`,
+                      boxShadow: `0 0 0 1px color-mix(in oklch, ${accentColor} 30%, transparent), 0 10px 30px -18px color-mix(in oklch, ${accentColor} 60%, transparent)`,
+                    }
+                  : {
+                      background: "color-mix(in oklch, var(--background) 40%, transparent)",
+                      borderColor: "var(--border)",
+                    }}
                 data-testid={`initiative-tile-${i.initiativeId}`}
               >
                 <button
                   onClick={() => setExpanded((e) => (e === i.initiativeId ? null : i.initiativeId))}
                   aria-expanded={isOpen}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left transition hover:bg-accent/30"
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left transition hover:bg-accent/20"
                 >
                   <span
-                    className="h-1.5 w-1.5 rounded-full"
-                    style={{ background: accentColor }}
+                    className="rounded-full transition"
+                    style={{
+                      background: accentColor,
+                      width: isOpen ? 8 : 6,
+                      height: isOpen ? 8 : 6,
+                      boxShadow: isOpen ? `0 0 0 3px color-mix(in oklch, ${accentColor} 25%, transparent)` : "none",
+                    }}
                   />
-                  <span className="flex-1 truncate text-sm font-medium">{i.initiativeName}</span>
+                  <span
+                    className={`flex-1 truncate text-sm ${isOpen ? "font-semibold" : "font-medium"}`}
+                    style={isOpen ? { color: accentColor } : undefined}
+                  >
+                    {i.initiativeName}
+                  </span>
                   {isOpen && initItems.length > 0 && (
                     <span className="text-[10px] font-mono tabular-nums text-muted-foreground">
                       {initItems.length} item{initItems.length === 1 ? "" : "s"}
@@ -99,12 +119,18 @@ export function InitiativesList({ orgId, teamId, strategy, accentColor, onToast 
                   )}
                   <ChevronDown
                     size={14}
-                    className="text-muted-foreground transition"
-                    style={{ transform: isOpen ? "rotate(180deg)" : "rotate(0deg)" }}
+                    className="transition"
+                    style={{
+                      transform: isOpen ? "rotate(180deg)" : "rotate(0deg)",
+                      color: isOpen ? accentColor : "var(--muted-foreground)",
+                    }}
                   />
                 </button>
                 {isOpen && (
-                  <div className="border-t border-border p-3 fade-up">
+                  <div
+                    className="border-t p-3 fade-up"
+                    style={{ borderColor: `color-mix(in oklch, ${accentColor} 30%, transparent)` }}
+                  >
                     <Kanban
                       orgId={orgId}
                       teamId={teamId}

@@ -131,15 +131,35 @@ export function InitiativeBoard({ orgId, teamId, strategy, accentColor, onToast 
   );
 }
 
-function StepColumn({ step, items, accentColor, onAdd, onUpdate, onDelete }) {
+function StepColumn({ step, index, totalSteps, items, accentColor, onAdd, onUpdate, onDelete }) {
   const [draft, setDraft] = useState("");
   const [editingId, setEditingId] = useState(null);
+  const isLast = index === totalSteps - 1;
 
   return (
-    <div className="flex min-h-[220px] flex-col rounded-lg border border-border bg-card">
+    <div className="relative flex min-h-[240px] flex-col rounded-lg border border-border bg-card">
+      {/* Process arrow to next step */}
+      {!isLast && (
+        <div
+          className="pointer-events-none absolute -right-3 top-6 z-10 flex h-6 w-6 items-center justify-center rounded-full border border-border bg-background text-muted-foreground"
+          aria-hidden
+        >
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+            <path d="M2 5h6M5.5 2.5 8 5l-2.5 2.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </div>
+      )}
       <div className="border-b border-border px-3 py-2" style={{ boxShadow: `inset 3px 0 0 ${accentColor}` }}>
-        <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">{step}</div>
-        <div className="text-[10px] font-mono tabular-nums text-muted-foreground">{items.length} item{items.length === 1 ? "" : "s"}</div>
+        <div className="flex items-center gap-1.5">
+          <span
+            className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[9px] font-bold font-mono tabular-nums"
+            style={{ background: `color-mix(in oklch, ${accentColor} 25%, transparent)`, color: accentColor }}
+          >
+            {index + 1}
+          </span>
+          <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground truncate">{step}</div>
+        </div>
+        <div className="mt-0.5 text-[10px] font-mono tabular-nums text-muted-foreground">{items.length} item{items.length === 1 ? "" : "s"}</div>
       </div>
       <div className="flex-1 space-y-1.5 overflow-auto p-2">
         {items.length === 0 && (

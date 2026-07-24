@@ -1,105 +1,172 @@
 import { useMemo, useState } from "react";
-import { ChevronRight, Plus, Target } from "lucide-react";
+import { ChevronRight, Plus, Target, ChevronDown } from "lucide-react";
 import { api } from "../lib/stradar-api";
 import { InitiativeBoard } from "./InitiativeBoard";
 import { STRATEGY_STATES, strategyStateMeta, toStrategyState } from "../lib/strategy-model";
 
 /**
- * StrategyList — inline strategy rows with expand-to-board.
- * Restrained palette: only the strategy accent color; state is signaled via
+ * StrategyList — inline strategy rows grouped by state:
+ *   Active   (0 or 1 expected)
+ *   Draft    (0 or 1 expected)
+ *   History  (Complete / Obsolete / Deleted) — collapsed by default
+ * Restrained palette: only the strategy accent color; state signaled via
  * icon + weight + opacity (no color per state).
  */
 export function StrategyList({
   orgId, teamId, strategies, accentColor, onCreate, onReload, onToast, loading,
 }) {
   const [expanded, setExpanded] = useState(null);
-  const [filter, setFilter] = useState("visible"); // "visible" | "all"
+  const [historyOpen, setHistoryOpen] = useState(false);
 
-  const filtered = useMemo(() => {
-    if (filter === "all") return strategies;
-    return strategies.filter((s) => {
+  const groups = useMemo(() => {
+    const active = [], draft = [], history = [];
+    strategies.forEach((s) => {
       const st = toStrategyState(s.strategyState);
-      return st !== "DELETED" && st !== "OBSOLETE";
+      if (st === "ACTIVE") active.push(s);
+      else if (st === "DRAFT") draft.push(s);
+      else history.push(s); // COMPLETE / OBSOLETE / DELETED
     });
-  }, [strategies, filter]);
+    return { active, draft, history };
+  }, [strategies]);
 
-  const activeCount = strategies.filter((s) => toStrategyState(s.strategyState) === "ACTIVE").length;
-  const draftCount = strategies.filter((s) => toStrategyState(s.strategyState) === "DRAFT").length;
-  const doneCount = strategies.filter((s) => toStrategyState(s.strategyState) === "COMPLETE").length;
+  const activeCount = groups.active.length;
+  const draftCount = groups.draft.length;
+  const historyCount = groups.history.length;
+
+  const renderRow = (s) => (
+    <StrategyRow
+      key={s.strategyId}
+      orgId={orgId}
+      teamId={teamId}
+      strategy={s}
+      accentColor={accentColor}
+      expanded={expanded === s.strategyId}
+      onToggle={() => setExpanded((e) => (e === s.strategyId ? null : s.strategyId))}
+      onStateChange={async (state) => {
+        const r = await api.strategies.setState(orgId, teamId, s.strategyId, state);
+        if (!r.ok) return onToast?.(r.body?.error || r.error || "Failed to update state", "err");
+        onToast?.(`Strategy marked ${strategyStateMeta[state].label.toLowerCase()}`);
+        onReload?.();
+      }}
+      onToast={onToast}
+    />
+  );
 
   return (
     <>
-      {/* Header row: KPIs + filter + new */}
+      {/* Header row: KPIs + new */}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-4 text-[11px] text-muted-foreground font-mono tabular-nums">
           <span data-testid="strategies-count-active"><span className="text-foreground text-sm font-semibold">{activeCount}</span> active</span>
           <span data-testid="strategies-count-draft"><span className="text-foreground text-sm font-semibold">{draftCount}</span> draft</span>
-          <span data-testid="strategies-count-complete"><span className="text-foreground text-sm font-semibold">{doneCount}</span> complete</span>
+          <span data-testid="strategies-count-history"><span className="text-foreground text-sm font-semibold">{historyCount}</span> history</span>
           <span className="text-muted-foreground/60">/</span>
           <span><span className="text-foreground text-sm font-semibold">{strategies.length}</span> total</span>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 rounded-full border border-border p-1 text-[11px]" role="tablist">
-            <button
-              onClick={() => setFilter("visible")}
-              aria-selected={filter === "visible"}
-              className={`rounded-full px-2.5 py-0.5 uppercase tracking-wider transition ${filter === "visible" ? "bg-accent text-foreground" : "text-muted-foreground"}`}
-              data-testid="strategy-filter-visible"
-            >
-              In use
-            </button>
-            <button
-              onClick={() => setFilter("all")}
-              aria-selected={filter === "all"}
-              className={`rounded-full px-2.5 py-0.5 uppercase tracking-wider transition ${filter === "all" ? "bg-accent text-foreground" : "text-muted-foreground"}`}
-              data-testid="strategy-filter-all"
-            >
-              Show all
-            </button>
-          </div>
-          <button
-            onClick={onCreate}
-            className="inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-primary-foreground transition hover:brightness-110"
-            style={{ background: accentColor }}
-            data-testid="new-strategy-btn"
-          >
-            <Plus size={12} /> New strategy
-          </button>
-        </div>
+        <button
+          onClick={onCreate}
+          className="inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-primary-foreground transition hover:brightness-110"
+          style={{ background: accentColor }}
+          data-testid="new-strategy-btn"
+        >
+          <Plus size={12} /> New strategy
+        </button>
       </div>
 
       {loading ? (
         <StrategyListSkeleton />
-      ) : filtered.length === 0 ? (
-        <EmptyState
-          hasHidden={strategies.length > 0}
-          onCreate={onCreate}
-          onShowAll={() => setFilter("all")}
-          accentColor={accentColor}
-        />
+      ) : strategies.length === 0 ? (
+        <EmptyState onCreate={onCreate} accentColor={accentColor} />
       ) : (
-        <ul className="space-y-2" data-testid="strategy-rows">
-          {filtered.map((s) => (
-            <StrategyRow
-              key={s.strategyId}
-              orgId={orgId}
-              teamId={teamId}
-              strategy={s}
-              accentColor={accentColor}
-              expanded={expanded === s.strategyId}
-              onToggle={() => setExpanded((e) => (e === s.strategyId ? null : s.strategyId))}
-              onStateChange={async (state) => {
-                const r = await api.strategies.setState(orgId, teamId, s.strategyId, state);
-                if (!r.ok) return onToast?.(r.body?.error || r.error || "Failed to update state", "err");
-                onToast?.(`Strategy marked ${strategyStateMeta[state].label.toLowerCase()}`);
-                onReload?.();
-              }}
-              onToast={onToast}
-            />
-          ))}
-        </ul>
+        <div className="space-y-6" data-testid="strategy-groups">
+          {/* ACTIVE */}
+          <StrategyGroup
+            label="Active"
+            hint="Currently being executed"
+            count={activeCount}
+            accentColor={accentColor}
+            emphasize
+          >
+            {groups.active.length > 0 ? (
+              <ul className="space-y-2">{groups.active.map(renderRow)}</ul>
+            ) : (
+              <div className="rounded-lg border border-dashed border-border p-4 text-center text-xs text-muted-foreground">
+                No active strategy yet.
+              </div>
+            )}
+          </StrategyGroup>
+
+          {/* DRAFT */}
+          <StrategyGroup
+            label="Draft"
+            hint="Work in progress"
+            count={draftCount}
+            accentColor={accentColor}
+          >
+            {groups.draft.length > 0 ? (
+              <ul className="space-y-2">{groups.draft.map(renderRow)}</ul>
+            ) : (
+              <div className="rounded-lg border border-dashed border-border p-4 text-center text-xs text-muted-foreground">
+                No draft strategy yet.
+              </div>
+            )}
+          </StrategyGroup>
+
+          {/* HISTORY — collapsed by default */}
+          {historyCount > 0 && (
+            <div>
+              <button
+                onClick={() => setHistoryOpen((o) => !o)}
+                className="mb-3 flex w-full items-center justify-between gap-2 rounded-lg border border-border bg-background/40 px-3 py-2 text-left transition hover:bg-accent/30"
+                aria-expanded={historyOpen}
+                data-testid="history-toggle"
+              >
+                <div className="flex items-center gap-2">
+                  <ChevronDown
+                    size={14}
+                    className="text-muted-foreground transition"
+                    style={{ transform: historyOpen ? "rotate(0deg)" : "rotate(-90deg)" }}
+                  />
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">History</span>
+                  <span className="text-[10px] font-mono tabular-nums text-muted-foreground">
+                    · {historyCount} archived
+                  </span>
+                </div>
+                <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  {historyOpen ? "Hide" : "Show"}
+                </span>
+              </button>
+              {historyOpen && (
+                <ul className="space-y-2 fade-up" data-testid="history-list">
+                  {groups.history.map(renderRow)}
+                </ul>
+              )}
+            </div>
+          )}
+        </div>
       )}
     </>
+  );
+}
+
+function StrategyGroup({ label, hint, count, accentColor, emphasize, children }) {
+  return (
+    <div data-testid={`group-${label.toLowerCase()}`}>
+      <div className="mb-2 flex items-baseline gap-2">
+        <div
+          className="h-1.5 w-1.5 rounded-full"
+          style={{ background: emphasize ? accentColor : "var(--muted-foreground)" }}
+        />
+        <span className={`text-[11px] font-semibold uppercase tracking-[0.18em] ${emphasize ? "text-foreground" : "text-muted-foreground"}`}>
+          {label}
+        </span>
+        <span className="text-[10px] font-mono tabular-nums text-muted-foreground">
+          · {count}
+        </span>
+        <span className="text-[10px] text-muted-foreground/70 hidden sm:inline">— {hint}</span>
+      </div>
+      {children}
+    </div>
   );
 }
 
@@ -108,11 +175,11 @@ function StrategyRow({ orgId, teamId, strategy, accentColor, expanded, onToggle,
   const dim = state === "OBSOLETE" || state === "DELETED" || state === "COMPLETE";
 
   return (
-    <li className="overflow-hidden rounded-xl border border-border bg-card" data-testid={`strategy-row-${strategy.strategyId}`}>
+    <li className="rounded-xl border border-border bg-card" data-testid={`strategy-row-${strategy.strategyId}`}>
       <button
         onClick={onToggle}
         aria-expanded={expanded}
-        className={`flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-accent/30 ${dim ? "opacity-60" : ""}`}
+        className={`flex w-full items-center gap-3 rounded-t-xl px-4 py-3 text-left transition hover:bg-accent/30 ${dim ? "opacity-60" : ""} ${expanded ? "" : "rounded-b-xl"}`}
       >
         <div
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
@@ -185,7 +252,8 @@ function StateChip({ state, accentColor, onChange, testId }) {
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
           <ul
             role="listbox"
-            className="absolute right-0 top-full z-50 mt-1.5 w-44 overflow-hidden rounded-lg border border-border bg-popover shadow-2xl fade-up"
+            className="absolute right-0 top-[calc(100%+6px)] z-50 w-52 overflow-hidden rounded-lg border border-border bg-popover shadow-2xl fade-up"
+            data-testid={`${testId}-menu`}
           >
             {STRATEGY_STATES.map((s) => {
               const m = strategyStateMeta[s];
@@ -213,7 +281,7 @@ function StateChip({ state, accentColor, onChange, testId }) {
   );
 }
 
-function EmptyState({ hasHidden, onCreate, onShowAll, accentColor }) {
+function EmptyState({ onCreate, accentColor }) {
   return (
     <div className="rounded-xl border border-dashed border-border p-10 text-center" data-testid="strategies-empty">
       <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full"
@@ -232,14 +300,6 @@ function EmptyState({ hasHidden, onCreate, onShowAll, accentColor }) {
         >
           <Plus size={12} /> New strategy
         </button>
-        {hasHidden && (
-          <button
-            onClick={onShowAll}
-            className="rounded-full border border-border px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground transition"
-          >
-            Show archived
-          </button>
-        )}
       </div>
     </div>
   );

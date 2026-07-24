@@ -207,15 +207,7 @@ export default function TeamPage() {
                 </div>
               </div>
             ) : (
-              <div className="section-card section-strategy p-6" data-testid="strategies-card">
-                <div className="mb-4">
-                  <div className="text-[10px] uppercase tracking-[0.24em]" style={{ color: "var(--section-strategy)" }}>Strategies</div>
-                  <h2 className="mt-1 text-xl font-semibold tracking-tight">Team strategies</h2>
-                  <p className="text-xs text-muted-foreground">
-                    Expand any strategy to plan its initiatives inline. Change state to move it through its lifecycle.
-                  </p>
-                </div>
-
+              <div data-testid="strategies-card">
                 <StrategyList
                   orgId={orgId}
                   teamId={teamId}

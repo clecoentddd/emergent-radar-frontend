@@ -1,132 +1,160 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, VALID_INITIATIVE_ITEM_STEPS } from "../lib/stradar-api";
-import { Loader2 } from "lucide-react";
+import { ChevronDown, Loader2, Plus } from "lucide-react";
 
 /**
- * InitiativeBoard — 4-step planning kanban for a single strategy.
- * Rendered inline inside expanded Strategy rows.
- *
- * We deliberately keep this monochrome: the strategy tint (accentColor) is the
- * only chromatic accent used. Step columns are distinguished by typography
- * (weight + letter-spacing) and a tiny top rule.
+ * InitiativesList — under a strategy tile: each initiative is a collapsible row.
+ * Expanded row shows the 4-step kanban (DIAGNOSTIC → OVERALL APPROACH →
+ * COHERENT SET OF ACTIONS → PROXIMATE OBJECTIVES) with process arrows.
  */
-export function InitiativeBoard({ orgId, teamId, strategy, accentColor, onToast }) {
+export function InitiativesList({ orgId, teamId, strategy, accentColor, onToast }) {
   const strategyId = strategy.strategyId;
   const [initiatives, setInitiatives] = useState([]);
-  const [items, setItems] = useState({}); // keyed by initiativeId
-  const [activeInitiative, setActiveInitiative] = useState(null);
+  const [items, setItems] = useState({}); // by initiativeId
+  const [expanded, setExpanded] = useState(null);
   const [showNew, setShowNew] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const load = useCallback(async () => {
+  const loadInitiatives = useCallback(async () => {
     setLoading(true);
     const r = await api.initiatives.list(strategyId);
-    const list = r.ok && Array.isArray(r.body) ? r.body : [];
-    setInitiatives(list);
-    if (list.length > 0 && !activeInitiative) setActiveInitiative(list[0].initiativeId);
+    setInitiatives(r.ok && Array.isArray(r.body) ? r.body : []);
     setLoading(false);
-  }, [strategyId, activeInitiative]);
-
-  useEffect(() => { load(); }, [load]);
+  }, [strategyId]);
 
   const loadItems = useCallback(async (initiativeId) => {
     const r = await api.initiativeItems.list(initiativeId);
     setItems((prev) => ({ ...prev, [initiativeId]: r.ok && Array.isArray(r.body) ? r.body : [] }));
   }, []);
 
-  useEffect(() => { if (activeInitiative) loadItems(activeInitiative); }, [activeInitiative, loadItems]);
+  useEffect(() => { loadInitiatives(); }, [loadInitiatives]);
+  useEffect(() => { if (expanded) loadItems(expanded); }, [expanded, loadItems]);
 
-  const activeItems = activeInitiative ? items[activeInitiative] || [] : [];
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center gap-2 py-4 text-xs text-muted-foreground">
+        <Loader2 size={14} className="animate-spin" /> Loading initiatives…
+      </div>
+    );
+  }
 
   return (
-    <div className="mt-3 rounded-xl border border-border bg-background/40 p-4" data-testid={`initiative-board-${strategyId}`}>
-      {loading ? (
-        <BoardSkeleton />
-      ) : initiatives.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-2 py-6 text-center">
-          <div className="text-sm text-muted-foreground">No initiatives yet.</div>
-          <button
-            onClick={() => setShowNew(true)}
-            className="rounded-full px-4 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-primary-foreground transition"
-            style={{ background: accentColor }}
-            data-testid={`add-first-initiative-${strategyId}`}
-          >
-            + Create the first initiative
-          </button>
-        </div>
-      ) : (
-        <>
-          {/* Initiative tabs — single accent, no rainbow */}
-          <div className="mb-3 flex flex-wrap items-center gap-1">
-            {initiatives.map((i) => {
-              const active = i.initiativeId === activeInitiative;
-              return (
-                <button
-                  key={i.initiativeId}
-                  onClick={() => setActiveInitiative(i.initiativeId)}
-                  className="rounded-full border px-3 py-1 text-xs font-medium transition"
-                  style={active
-                    ? { background: accentColor, borderColor: accentColor, color: "var(--primary-foreground)" }
-                    : { borderColor: "var(--border)", color: "var(--muted-foreground)" }}
-                  data-testid={`initiative-tab-${i.initiativeId}`}
-                >
-                  {i.initiativeName}
-                </button>
-              );
-            })}
-            <button
-              onClick={() => setShowNew(true)}
-              className="rounded-full border border-dashed border-border px-3 py-1 text-xs text-muted-foreground hover:text-foreground hover:border-foreground/40 transition"
-              data-testid={`add-initiative-${strategyId}`}
-            >
-              + Initiative
-            </button>
-          </div>
-
-          {activeInitiative && (
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
-              {VALID_INITIATIVE_ITEM_STEPS.map((step) => (
-                <StepColumn
-                  key={step}
-                  step={step}
-                  items={activeItems.filter((it) => it.step === step)}
-                  accentColor={accentColor}
-                  onAdd={async (content) => {
-                    const r = await api.initiativeItems.create(orgId, teamId, strategyId, activeInitiative, step, content);
-                    if (!r.ok) return onToast?.(r.body?.error || r.error || "Failed to add", "err");
-                    await loadItems(activeInitiative);
-                  }}
-                  onUpdate={async (item, content) => {
-                    const r = await api.initiativeItems.update(orgId, teamId, strategyId, activeInitiative, item.itemId, step, content);
-                    if (!r.ok) return onToast?.(r.body?.error || r.error || "Failed to update", "err");
-                    await loadItems(activeInitiative);
-                  }}
-                  onDelete={async (item) => {
-                    if (!window.confirm("Delete this item?")) return;
-                    const r = await api.initiativeItems.remove(orgId, teamId, strategyId, activeInitiative, item.itemId);
-                    if (!r.ok) return onToast?.(r.body?.error || r.error || "Failed to delete", "err");
-                    await loadItems(activeInitiative);
-                  }}
-                />
-              ))}
-            </div>
-          )}
-        </>
-      )}
+    <div className="space-y-2" data-testid={`initiatives-${strategyId}`}>
+      <div className="flex items-center justify-between">
+        <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+          Initiatives · {initiatives.length}
+        </span>
+        <button
+          onClick={() => setShowNew(true)}
+          className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[10px] uppercase tracking-wider text-muted-foreground hover:bg-accent hover:text-foreground transition"
+          data-testid={`add-initiative-${strategyId}`}
+        >
+          <Plus size={11} /> Initiative
+        </button>
+      </div>
 
       {showNew && (
         <NewInitiativePrompt
-          onCancel={() => setShowNew(false)}
           accentColor={accentColor}
+          onCancel={() => setShowNew(false)}
           onCreate={async (name) => {
             if (!name.trim()) return;
             const r = await api.initiatives.create(orgId, teamId, strategyId, name.trim());
             if (!r.ok) return onToast?.(r.body?.error || r.error || "Failed to create initiative", "err");
             setShowNew(false);
-            await load();
+            await loadInitiatives();
           }}
         />
       )}
+
+      {initiatives.length === 0 && !showNew ? (
+        <div className="rounded-lg border border-dashed border-border p-4 text-center text-xs text-muted-foreground">
+          No initiatives yet.
+        </div>
+      ) : (
+        <ul className="space-y-2">
+          {initiatives.map((i) => {
+            const isOpen = expanded === i.initiativeId;
+            const initItems = items[i.initiativeId] || [];
+            return (
+              <li
+                key={i.initiativeId}
+                className="rounded-lg border border-border bg-background/40"
+                data-testid={`initiative-tile-${i.initiativeId}`}
+              >
+                <button
+                  onClick={() => setExpanded((e) => (e === i.initiativeId ? null : i.initiativeId))}
+                  aria-expanded={isOpen}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left transition hover:bg-accent/30"
+                >
+                  <span
+                    className="h-1.5 w-1.5 rounded-full"
+                    style={{ background: accentColor }}
+                  />
+                  <span className="flex-1 truncate text-sm font-medium">{i.initiativeName}</span>
+                  {isOpen && initItems.length > 0 && (
+                    <span className="text-[10px] font-mono tabular-nums text-muted-foreground">
+                      {initItems.length} item{initItems.length === 1 ? "" : "s"}
+                    </span>
+                  )}
+                  <ChevronDown
+                    size={14}
+                    className="text-muted-foreground transition"
+                    style={{ transform: isOpen ? "rotate(180deg)" : "rotate(0deg)" }}
+                  />
+                </button>
+                {isOpen && (
+                  <div className="border-t border-border p-3 fade-up">
+                    <Kanban
+                      orgId={orgId}
+                      teamId={teamId}
+                      strategyId={strategyId}
+                      initiativeId={i.initiativeId}
+                      items={initItems}
+                      accentColor={accentColor}
+                      onReload={() => loadItems(i.initiativeId)}
+                      onToast={onToast}
+                    />
+                  </div>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function Kanban({ orgId, teamId, strategyId, initiativeId, items, accentColor, onReload, onToast }) {
+  return (
+    <div className="grid grid-flow-col auto-cols-[minmax(200px,1fr)] gap-3 overflow-x-auto pb-1" data-testid={`kanban-${initiativeId}`}>
+      {VALID_INITIATIVE_ITEM_STEPS.map((step, idx) => (
+        <StepColumn
+          key={step}
+          step={step}
+          index={idx}
+          totalSteps={VALID_INITIATIVE_ITEM_STEPS.length}
+          items={items.filter((it) => it.step === step)}
+          accentColor={accentColor}
+          onAdd={async (content) => {
+            const r = await api.initiativeItems.create(orgId, teamId, strategyId, initiativeId, step, content);
+            if (!r.ok) return onToast?.(r.body?.error || r.error || "Failed to add", "err");
+            await onReload();
+          }}
+          onUpdate={async (item, content) => {
+            const r = await api.initiativeItems.update(orgId, teamId, strategyId, initiativeId, item.itemId, step, content);
+            if (!r.ok) return onToast?.(r.body?.error || r.error || "Failed to update", "err");
+            await onReload();
+          }}
+          onDelete={async (item) => {
+            if (!window.confirm("Delete this item?")) return;
+            const r = await api.initiativeItems.remove(orgId, teamId, strategyId, initiativeId, item.itemId);
+            if (!r.ok) return onToast?.(r.body?.error || r.error || "Failed to delete", "err");
+            await onReload();
+          }}
+        />
+      ))}
     </div>
   );
 }
@@ -137,8 +165,7 @@ function StepColumn({ step, index, totalSteps, items, accentColor, onAdd, onUpda
   const isLast = index === totalSteps - 1;
 
   return (
-    <div className="relative flex min-h-[240px] flex-col rounded-lg border border-border bg-card">
-      {/* Process arrow to next step */}
+    <div className="relative flex min-h-[220px] flex-col rounded-lg border border-border bg-card">
       {!isLast && (
         <div
           className="pointer-events-none absolute -right-3 top-6 z-10 flex h-6 w-6 items-center justify-center rounded-full border border-border bg-background text-muted-foreground"
@@ -159,7 +186,9 @@ function StepColumn({ step, index, totalSteps, items, accentColor, onAdd, onUpda
           </span>
           <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground truncate">{step}</div>
         </div>
-        <div className="mt-0.5 text-[10px] font-mono tabular-nums text-muted-foreground">{items.length} item{items.length === 1 ? "" : "s"}</div>
+        <div className="mt-0.5 text-[10px] font-mono tabular-nums text-muted-foreground">
+          {items.length} item{items.length === 1 ? "" : "s"}
+        </div>
       </div>
       <div className="flex-1 space-y-1.5 overflow-auto p-2">
         {items.length === 0 && (
@@ -211,7 +240,6 @@ function StepColumn({ step, index, totalSteps, items, accentColor, onAdd, onUpda
 function ItemCard({ item, editing, onEdit, onCancel, onSave, onDelete }) {
   const [draft, setDraft] = useState(item.content);
   useEffect(() => { if (editing) setDraft(item.content); }, [editing, item.content]);
-
   if (editing) {
     return (
       <div className="rounded-md border border-primary/40 bg-card p-2">
@@ -245,7 +273,7 @@ function NewInitiativePrompt({ onCreate, onCancel, accentColor }) {
   return (
     <form
       onSubmit={(e) => { e.preventDefault(); onCreate(name); }}
-      className="mt-3 flex items-center gap-2 rounded-md border border-border bg-card px-2 py-2"
+      className="flex items-center gap-2 rounded-md border border-border bg-card px-2 py-2"
     >
       <input
         autoFocus
@@ -272,13 +300,5 @@ function NewInitiativePrompt({ onCreate, onCancel, accentColor }) {
         Create
       </button>
     </form>
-  );
-}
-
-function BoardSkeleton() {
-  return (
-    <div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
-      <Loader2 size={14} className="animate-spin" /> Loading initiatives…
-    </div>
   );
 }

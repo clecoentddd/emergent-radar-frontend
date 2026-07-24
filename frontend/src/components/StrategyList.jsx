@@ -1,16 +1,15 @@
 import { useMemo, useState } from "react";
-import { ChevronRight, Plus, Target, ChevronDown } from "lucide-react";
+import { ChevronDown, Plus } from "lucide-react";
 import { api } from "../lib/stradar-api";
-import { InitiativeBoard } from "./InitiativeBoard";
-import { STRATEGY_STATES, strategyStateMeta, toStrategyState } from "../lib/strategy-model";
+import { StrategyTile } from "./StrategyTile";
+import { strategyStateMeta, toStrategyState } from "../lib/strategy-model";
 
 /**
- * StrategyList — inline strategy rows grouped by state:
- *   Active   (0 or 1 expected)
- *   Draft    (0 or 1 expected)
- *   History  (Complete / Obsolete / Deleted) — collapsed by default
- * Restrained palette: only the strategy accent color; state signaled via
- * icon + weight + opacity (no color per state).
+ * StrategyList — strategies grouped by state; each strategy is its own tile.
+ * Groups:
+ *   Active   → emphasized
+ *   Draft    → default
+ *   History  → Complete / Obsolete / Deleted (collapsed by default)
  */
 export function StrategyList({
   orgId, teamId, strategies, accentColor, onCreate, onReload, onToast, loading,
@@ -24,17 +23,13 @@ export function StrategyList({
       const st = toStrategyState(s.strategyState);
       if (st === "ACTIVE") active.push(s);
       else if (st === "DRAFT") draft.push(s);
-      else history.push(s); // COMPLETE / OBSOLETE / DELETED
+      else history.push(s);
     });
     return { active, draft, history };
   }, [strategies]);
 
-  const activeCount = groups.active.length;
-  const draftCount = groups.draft.length;
-  const historyCount = groups.history.length;
-
-  const renderRow = (s) => (
-    <StrategyRow
+  const renderTile = (s) => (
+    <StrategyTile
       key={s.strategyId}
       orgId={orgId}
       teamId={teamId}
@@ -53,16 +48,9 @@ export function StrategyList({
   );
 
   return (
-    <>
-      {/* Header row: KPIs + new */}
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-4 text-[11px] text-muted-foreground font-mono tabular-nums">
-          <span data-testid="strategies-count-active"><span className="text-foreground text-sm font-semibold">{activeCount}</span> active</span>
-          <span data-testid="strategies-count-draft"><span className="text-foreground text-sm font-semibold">{draftCount}</span> draft</span>
-          <span data-testid="strategies-count-history"><span className="text-foreground text-sm font-semibold">{historyCount}</span> history</span>
-          <span className="text-muted-foreground/60">/</span>
-          <span><span className="text-foreground text-sm font-semibold">{strategies.length}</span> total</span>
-        </div>
+    <div className="space-y-8" data-testid="strategy-groups">
+      {/* Top action */}
+      <div className="flex justify-end">
         <button
           onClick={onCreate}
           className="inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-primary-foreground transition hover:brightness-110"
@@ -74,46 +62,24 @@ export function StrategyList({
       </div>
 
       {loading ? (
-        <StrategyListSkeleton />
+        <TilesSkeleton />
       ) : strategies.length === 0 ? (
         <EmptyState onCreate={onCreate} accentColor={accentColor} />
       ) : (
-        <div className="space-y-6" data-testid="strategy-groups">
-          {/* ACTIVE */}
-          <StrategyGroup
-            label="Active"
-            hint="Currently being executed"
-            count={activeCount}
-            accentColor={accentColor}
-            emphasize
-          >
-            {groups.active.length > 0 ? (
-              <ul className="space-y-2">{groups.active.map(renderRow)}</ul>
-            ) : (
-              <div className="rounded-lg border border-dashed border-border p-4 text-center text-xs text-muted-foreground">
-                No active strategy yet.
-              </div>
-            )}
+        <>
+          <StrategyGroup label="Active" count={groups.active.length} accentColor={accentColor} emphasize>
+            {groups.active.length > 0
+              ? <div className="space-y-3">{groups.active.map(renderTile)}</div>
+              : <MutedNote>No active strategy.</MutedNote>}
           </StrategyGroup>
 
-          {/* DRAFT */}
-          <StrategyGroup
-            label="Draft"
-            hint="Work in progress"
-            count={draftCount}
-            accentColor={accentColor}
-          >
-            {groups.draft.length > 0 ? (
-              <ul className="space-y-2">{groups.draft.map(renderRow)}</ul>
-            ) : (
-              <div className="rounded-lg border border-dashed border-border p-4 text-center text-xs text-muted-foreground">
-                No draft strategy yet.
-              </div>
-            )}
+          <StrategyGroup label="Draft" count={groups.draft.length} accentColor={accentColor}>
+            {groups.draft.length > 0
+              ? <div className="space-y-3">{groups.draft.map(renderTile)}</div>
+              : <MutedNote>No draft.</MutedNote>}
           </StrategyGroup>
 
-          {/* HISTORY — collapsed by default */}
-          {historyCount > 0 && (
+          {groups.history.length > 0 && (
             <div>
               <button
                 onClick={() => setHistoryOpen((o) => !o)}
@@ -128,31 +94,29 @@ export function StrategyList({
                     style={{ transform: historyOpen ? "rotate(0deg)" : "rotate(-90deg)" }}
                   />
                   <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">History</span>
-                  <span className="text-[10px] font-mono tabular-nums text-muted-foreground">
-                    · {historyCount} archived
-                  </span>
+                  <span className="text-[10px] font-mono tabular-nums text-muted-foreground">· {groups.history.length}</span>
                 </div>
                 <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
                   {historyOpen ? "Hide" : "Show"}
                 </span>
               </button>
               {historyOpen && (
-                <ul className="space-y-2 fade-up" data-testid="history-list">
-                  {groups.history.map(renderRow)}
-                </ul>
+                <div className="space-y-3 fade-up" data-testid="history-list">
+                  {groups.history.map(renderTile)}
+                </div>
               )}
             </div>
           )}
-        </div>
+        </>
       )}
-    </>
+    </div>
   );
 }
 
-function StrategyGroup({ label, hint, count, accentColor, emphasize, children }) {
+function StrategyGroup({ label, count, accentColor, emphasize, children }) {
   return (
     <div data-testid={`group-${label.toLowerCase()}`}>
-      <div className="mb-2 flex items-baseline gap-2">
+      <div className="mb-3 flex items-baseline gap-2">
         <div
           className="h-1.5 w-1.5 rounded-full"
           style={{ background: emphasize ? accentColor : "var(--muted-foreground)" }}
@@ -160,123 +124,17 @@ function StrategyGroup({ label, hint, count, accentColor, emphasize, children })
         <span className={`text-[11px] font-semibold uppercase tracking-[0.18em] ${emphasize ? "text-foreground" : "text-muted-foreground"}`}>
           {label}
         </span>
-        <span className="text-[10px] font-mono tabular-nums text-muted-foreground">
-          · {count}
-        </span>
-        <span className="text-[10px] text-muted-foreground/70 hidden sm:inline">— {hint}</span>
+        <span className="text-[10px] font-mono tabular-nums text-muted-foreground">· {count}</span>
       </div>
       {children}
     </div>
   );
 }
 
-function StrategyRow({ orgId, teamId, strategy, accentColor, expanded, onToggle, onStateChange, onToast }) {
-  const state = toStrategyState(strategy.strategyState);
-  const dim = state === "OBSOLETE" || state === "DELETED" || state === "COMPLETE";
-
+function MutedNote({ children }) {
   return (
-    <li className="rounded-xl border border-border bg-card" data-testid={`strategy-row-${strategy.strategyId}`}>
-      <button
-        onClick={onToggle}
-        aria-expanded={expanded}
-        className={`flex w-full items-center gap-3 rounded-t-xl px-4 py-3 text-left transition hover:bg-accent/30 ${dim ? "opacity-60" : ""} ${expanded ? "" : "rounded-b-xl"}`}
-      >
-        <div
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
-          style={{
-            background: `color-mix(in oklch, ${accentColor} 18%, transparent)`,
-            boxShadow: `inset 0 0 0 1px color-mix(in oklch, ${accentColor} 55%, transparent)`,
-          }}
-        >
-          <Target size={16} style={{ color: accentColor }} />
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <span className={`text-sm font-semibold truncate ${state === "OBSOLETE" || state === "DELETED" ? "line-through decoration-muted-foreground" : ""}`}>
-              {strategy.strategyName}
-            </span>
-          </div>
-          {strategy.strategyTimeframe && (
-            <div className="text-[10px] font-mono tabular-nums uppercase tracking-[0.14em] text-muted-foreground">
-              {strategy.strategyTimeframe}
-            </div>
-          )}
-        </div>
-        <StateChip state={state} accentColor={accentColor} onChange={onStateChange} testId={`state-chip-${strategy.strategyId}`} />
-        <ChevronRight
-          size={16}
-          className="text-muted-foreground transition"
-          style={{ transform: expanded ? "rotate(90deg)" : "rotate(0deg)" }}
-        />
-      </button>
-
-      {expanded && (
-        <div className="border-t border-border px-4 py-3">
-          <InitiativeBoard
-            orgId={orgId}
-            teamId={teamId}
-            strategy={strategy}
-            accentColor={accentColor}
-            onToast={onToast}
-          />
-        </div>
-      )}
-    </li>
-  );
-}
-
-function StateChip({ state, accentColor, onChange, testId }) {
-  const [open, setOpen] = useState(false);
-  const meta = strategyStateMeta[state];
-  const Icon = meta.icon;
-  const filled = state === "ACTIVE";
-
-  return (
-    <div className="relative shrink-0" onClick={(e) => e.stopPropagation()}>
-      <button
-        onClick={() => setOpen((o) => !o)}
-        className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] transition hover:brightness-110"
-        style={filled
-          ? { background: accentColor, borderColor: accentColor, color: "var(--primary-foreground)" }
-          : { borderColor: "var(--border-strong)", background: "transparent", color: "var(--muted-foreground)" }}
-        title={meta.hint}
-        data-testid={testId}
-        aria-haspopup="listbox"
-        aria-expanded={open}
-      >
-        <Icon size={11} />
-        {meta.label}
-      </button>
-      {open && (
-        <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <ul
-            role="listbox"
-            className="absolute right-0 top-[calc(100%+6px)] z-50 w-52 overflow-hidden rounded-lg border border-border bg-popover shadow-2xl fade-up"
-            data-testid={`${testId}-menu`}
-          >
-            {STRATEGY_STATES.map((s) => {
-              const m = strategyStateMeta[s];
-              const I = m.icon;
-              return (
-                <li key={s}>
-                  <button
-                    onClick={() => { setOpen(false); if (s !== state) onChange(s); }}
-                    className={`flex w-full items-center gap-2 px-2.5 py-2 text-xs transition hover:bg-accent ${s === state ? "bg-accent/60" : ""}`}
-                    data-testid={`state-option-${s}`}
-                  >
-                    <I size={12} className="text-muted-foreground" />
-                    <span className="flex-1 text-left">
-                      <span className="block font-medium">{m.label}</span>
-                      <span className="block text-[10px] text-muted-foreground">{m.hint}</span>
-                    </span>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        </>
-      )}
+    <div className="rounded-lg border border-dashed border-border p-3 text-center text-xs text-muted-foreground">
+      {children}
     </div>
   );
 }
@@ -284,40 +142,25 @@ function StateChip({ state, accentColor, onChange, testId }) {
 function EmptyState({ onCreate, accentColor }) {
   return (
     <div className="rounded-xl border border-dashed border-border p-10 text-center" data-testid="strategies-empty">
-      <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full"
-           style={{ background: `color-mix(in oklch, ${accentColor} 15%, transparent)` }}>
-        <Target size={18} style={{ color: accentColor }} />
-      </div>
-      <div className="text-sm font-medium">No strategies in play</div>
-      <div className="mt-1 text-xs text-muted-foreground">
-        Draft your first strategy to organise initiatives around your radar signals.
-      </div>
-      <div className="mt-4 flex items-center justify-center gap-2">
-        <button
-          onClick={onCreate}
-          className="inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-primary-foreground transition"
-          style={{ background: accentColor }}
-        >
-          <Plus size={12} /> New strategy
-        </button>
-      </div>
+      <div className="text-sm font-medium">No strategies yet</div>
+      <div className="mt-1 text-xs text-muted-foreground">Draft your first strategy to organise initiatives.</div>
+      <button
+        onClick={onCreate}
+        className="mt-4 inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-primary-foreground transition"
+        style={{ background: accentColor }}
+      >
+        <Plus size={12} /> New strategy
+      </button>
     </div>
   );
 }
 
-function StrategyListSkeleton() {
+function TilesSkeleton() {
   return (
-    <ul className="space-y-2">
-      {[0, 1, 2].map((i) => (
-        <li key={i} className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3">
-          <div className="h-9 w-9 shrink-0 animate-pulse rounded-lg bg-muted" />
-          <div className="flex-1 space-y-2">
-            <div className="h-3 w-1/3 animate-pulse rounded bg-muted" />
-            <div className="h-2.5 w-1/5 animate-pulse rounded bg-muted/70" />
-          </div>
-          <div className="h-6 w-16 animate-pulse rounded-full bg-muted" />
-        </li>
+    <div className="space-y-3">
+      {[0, 1].map((i) => (
+        <div key={i} className="h-16 animate-pulse rounded-2xl border border-border bg-card" />
       ))}
-    </ul>
+    </div>
   );
 }

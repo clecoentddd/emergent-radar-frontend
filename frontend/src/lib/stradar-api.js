@@ -140,6 +140,18 @@ export const api = {
       request("GET", `/api/query/strategies?organizationId=${encodeURIComponent(organizationId)}&teamId=${encodeURIComponent(teamId)}`),
     create: (organizationId, teamId, data) =>
       request("POST", `/api/organizations/${encodeURIComponent(organizationId)}/teams/${encodeURIComponent(teamId)}/strategies`, data),
+    update: (organizationId, teamId, strategyId, data) =>
+      request("PUT",
+        `/api/organizations/${encodeURIComponent(organizationId)}/teams/${encodeURIComponent(teamId)}/strategies/${encodeURIComponent(strategyId)}`,
+        data,
+        strategyId,
+      ),
+    setState: (organizationId, teamId, strategyId, strategyState) =>
+      request("PUT",
+        `/api/organizations/${encodeURIComponent(organizationId)}/teams/${encodeURIComponent(teamId)}/strategies/${encodeURIComponent(strategyId)}/state`,
+        { strategyState },
+        strategyId,
+      ),
   },
   environmentalChanges: {
     list: (organizationId, teamId) =>

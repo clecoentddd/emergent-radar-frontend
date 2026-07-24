@@ -9,6 +9,7 @@ import {
 import { AppHeader } from "../components/AppHeader";
 import { Radar } from "../components/Radar";
 import { Legend } from "../components/Legend";
+import { StrategyList } from "../components/StrategyList";
 import { Modal, TextField, SelectField, ActionRow, Toast } from "../components/ui-kit";
 import { Radar as RadarIcon, Compass, Plus, ChevronRight, Target, Pencil, ArrowLeft } from "lucide-react";
 
@@ -140,7 +141,7 @@ export default function TeamPage() {
                 data-testid="tab-radar"
               >
                 <RadarIcon size={12} /> Radar
-                <span className={`ml-1 rounded-full px-1.5 py-0.5 text-[10px] ${tab === "radar" ? "bg-primary-foreground/20" : "bg-muted"}`}>{changes.length}</span>
+                <span className={`ml-1 rounded-full px-1.5 py-0.5 text-[10px] font-mono tabular-nums ${tab === "radar" ? "bg-primary-foreground/20" : "bg-muted"}`}>{changes.length}</span>
               </button>
               <button
                 role="tab"
@@ -155,7 +156,7 @@ export default function TeamPage() {
                 data-testid="tab-strategies"
               >
                 <Compass size={12} /> Strategies
-                <span className={`ml-1 rounded-full px-1.5 py-0.5 text-[10px] ${tab === "strategies" ? "bg-primary-foreground/20" : "bg-muted"}`}>{strategies.length}</span>
+                <span className={`ml-1 rounded-full px-1.5 py-0.5 text-[10px] font-mono tabular-nums ${tab === "strategies" ? "bg-primary-foreground/20" : "bg-muted"}`}>{strategies.length}</span>
               </button>
             </div>
 
@@ -198,7 +199,7 @@ export default function TeamPage() {
                         data-testid={`quadrant-count-${q}`}
                       >
                         <div className="text-[10px] font-bold tracking-[0.18em]" style={{ color: quadrantColor[q] }}>{q}</div>
-                        <div className="text-xl font-semibold">{counts[q]}</div>
+                        <div className="text-xl font-semibold font-mono tabular-nums">{counts[q]}</div>
                       </button>
                     ))}
                   </div>
@@ -207,62 +208,24 @@ export default function TeamPage() {
               </div>
             ) : (
               <div className="section-card section-strategy p-6" data-testid="strategies-card">
-                <div className="mb-4 flex items-start justify-between gap-4">
-                  <div>
-                    <div className="text-[10px] uppercase tracking-[0.24em]" style={{ color: "var(--section-strategy)" }}>Strategies</div>
-                    <h2 className="mt-1 text-xl font-semibold tracking-tight">Team strategies</h2>
-                    <p className="text-xs text-muted-foreground">
-                      Open a strategy to plan initiatives with the 4-step framework.
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => setShowNewStrategy(true)}
-                    className="inline-flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-wider text-primary-foreground hover:brightness-110 transition btn-glow"
-                    style={{ background: "var(--section-strategy)" }}
-                    data-testid="new-strategy-btn"
-                  >
-                    <Plus size={13} /> New strategy
-                  </button>
+                <div className="mb-4">
+                  <div className="text-[10px] uppercase tracking-[0.24em]" style={{ color: "var(--section-strategy)" }}>Strategies</div>
+                  <h2 className="mt-1 text-xl font-semibold tracking-tight">Team strategies</h2>
+                  <p className="text-xs text-muted-foreground">
+                    Expand any strategy to plan its initiatives inline. Change state to move it through its lifecycle.
+                  </p>
                 </div>
 
-                {strategies.length === 0 ? (
-                  <div className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-                    No strategies yet. Create one to plan initiatives.
-                  </div>
-                ) : (
-                  <ul className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
-                    {strategies.map((s) => (
-                      <li key={s.strategyId}>
-                        <button
-                          onClick={() => navigate(`/workspace/${encodeURIComponent(orgId)}/team/${encodeURIComponent(teamId)}/strategy/${encodeURIComponent(s.strategyId)}`)}
-                          className="card-lift tile w-full flex items-center justify-between gap-2 p-4 text-left transition"
-                          data-testid={`strategy-row-${s.strategyId}`}
-                        >
-                          <div className="flex items-center gap-3">
-                            <div
-                              className="h-9 w-9 rounded-lg flex items-center justify-center"
-                              style={{
-                                background: "color-mix(in oklch, var(--section-strategy) 20%, transparent)",
-                                boxShadow: "inset 0 0 0 1px color-mix(in oklch, var(--section-strategy) 55%, transparent)",
-                              }}
-                            >
-                              <Target size={16} style={{ color: "var(--section-strategy)" }} />
-                            </div>
-                            <div>
-                              <div className="text-sm font-semibold">{s.strategyName}</div>
-                              {s.strategyTimeframe && (
-                                <div className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-                                  {s.strategyTimeframe}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                          <ChevronRight size={16} className="text-muted-foreground" />
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
+                <StrategyList
+                  orgId={orgId}
+                  teamId={teamId}
+                  strategies={strategies}
+                  accentColor="var(--section-strategy)"
+                  loading={loading}
+                  onCreate={() => setShowNewStrategy(true)}
+                  onReload={load}
+                  onToast={showToast}
+                />
               </div>
             )}
           </>

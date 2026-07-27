@@ -160,6 +160,8 @@ export const api = {
       request("POST", `/api/organizations/${encodeURIComponent(organizationId)}/teams/${encodeURIComponent(teamId)}/environmental-changes`, data),
     update: (organizationId, teamId, envChangeId, updates) =>
       request("PUT", `/api/organizations/${encodeURIComponent(organizationId)}/teams/${encodeURIComponent(teamId)}/environmental-changes/${encodeURIComponent(envChangeId)}`, updates),
+    remove: (organizationId, teamId, envChangeId) =>
+      request("DELETE", `/api/organizations/${encodeURIComponent(organizationId)}/teams/${encodeURIComponent(teamId)}/environmental-changes/${encodeURIComponent(envChangeId)}`, undefined, envChangeId),
   },
   initiatives: {
     list: (strategyId) =>

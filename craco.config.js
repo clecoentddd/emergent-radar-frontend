@@ -28,9 +28,16 @@ function makeDevServerV5Compatible(devServerConfig) {
         ? "https"
         : "http";
   compatibleConfig.headers = {
-    ...compatibleConfig.headers,
-    "Cross-Origin-Resource-Policy": "same-origin",
-  };
+  ...compatibleConfig.headers,
+  "Cross-Origin-Resource-Policy": "cross-origin",
+  "Content-Security-Policy": [
+    "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: http://localhost:* ws://localhost:* http://127.0.0.1:* ws://127.0.0.1:* https://*.emergent.sh;",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.emergent.sh;",
+    "connect-src 'self' http://localhost:* ws://localhost:* http://127.0.0.1:* ws://127.0.0.1:* https://*.emergent.sh;",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;",
+    "font-src 'self' data: https://fonts.gstatic.com;"
+  ].join(" ")
+};
 
   if (onBeforeSetupMiddleware || setupMiddlewares) {
     compatibleConfig.setupMiddlewares = (middlewares, devServer) => {

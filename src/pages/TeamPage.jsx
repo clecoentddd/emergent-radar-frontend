@@ -11,7 +11,7 @@ import { Radar } from "../components/Radar";
 import { Legend } from "../components/Legend";
 import { StrategyList } from "../components/StrategyList";
 import { Modal, TextField, SelectField, ActionRow, Toast } from "../components/ui-kit";
-import { Radar as RadarIcon, Compass, Plus, ChevronRight, Target, Pencil, ArrowLeft } from "lucide-react";
+import { Radar as RadarIcon, Compass, Plus, ChevronRight, Target, Pencil, ArrowLeft, Trash2 } from "lucide-react";
 
 export default function TeamPage() {
   const { orgId, teamId } = useParams();
@@ -61,6 +61,15 @@ export default function TeamPage() {
     if (!getConfig().token) { navigate("/login"); return; }
     load();
   }, [load, navigate]);
+
+  const handleDeleteChange = async (change) => {
+    if (!window.confirm(`Delete "${change.envChangeTitle}"? This cannot be undone.`)) return;
+    const r = await api.environmentalChanges.remove(orgId, teamId, change.envChangeId);
+    if (!r.ok) return showToast(r.body?.error || r.error || "Failed to delete change", "err");
+    setSelectedChange(null);
+    await load();
+    showToast("Environmental change deleted");
+  };
 
   const counts = useMemo(() => {
     const c = { BUSINESS: 0, CAPABILITIES: 0, "PEOPLE & KNOWLEDGE": 0, "OPERATING MODEL": 0 };
@@ -255,7 +264,7 @@ export default function TeamPage() {
                       <div className="flex-1 truncate text-sm font-medium">{c.envChangeTitle}</div>
                     </div>
                     <div className="mt-1 text-[11px] text-muted-foreground">
-                      {toState(c)} · {impact} impact · {toEffort(c.effort)} effort · {toNature(c.nature)}
+                      {toNature(c.nature)} · {toState(c)} · {impact} impact · {toEffort(c.effort)} effort
                     </div>
                   </button>
                 );
@@ -275,9 +284,9 @@ export default function TeamPage() {
             {[
               ["Category (quadrant)", toQuadrant(selectedChange.category)],
               ["Lifecycle", toState(selectedChange)],
+              ["Nature", toNature(selectedChange.nature)],
               ["Impact", toImpact(selectedChange.impact)],
               ["Effort", toEffort(selectedChange.effort)],
-              ["Nature", toNature(selectedChange.nature)],
               ["Detect", selectedChange.detect ?? "—"],
               ["Assess", selectedChange.assess ?? "—"],
               ["Respond", selectedChange.respond ?? "—"],
@@ -289,6 +298,15 @@ export default function TeamPage() {
             ))}
           </div>
           <div className="mt-5 flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => handleDeleteChange(selectedChange)}
+              className="inline-flex items-center gap-1.5 rounded-md border border-destructive/40 px-4 py-2 text-sm text-destructive hover:bg-destructive/10 transition"
+              data-testid="delete-change-btn"
+            >
+              <Trash2 size={12} /> Delete
+            </button>
+            <div className="flex-1" />
             <button
               type="button"
               onClick={() => setSelectedChange(null)}
@@ -436,30 +454,44 @@ function ChangeFormModal({ orgId, teamId, existing, onClose, onSaved, onError })
 
   return (
     <Modal
+      wide
       title={isEdit ? `Edit environmental change` : "Detect environmental change"}
       onClose={onClose}
       testId={isEdit ? "edit-change-modal" : "new-change-modal"}
     >
-      <form onSubmit={submit} className="space-y-3">
-        <TextField label="Title" value={title} onChange={setTitle} placeholder="e.g. Regulatory shift in EU" testId="change-title-input" />
-        <TextField label="What was detected?" value={detect} onChange={setDetect} placeholder="Describe the signal…" multiline />
-        <div className="grid grid-cols-2 gap-3">
-          <SelectField label="Category / Quadrant" value={category} options={QUADRANTS} onChange={setCategory} testId="change-category-select" />
-          <SelectField label="Lifecycle state" value={lifecycle} options={STATES} onChange={setLifecycle} testId="change-lifecycle-select" />
-          <SelectField label="Impact" value={impact} options={IMPACTS} onChange={setImpact} testId="change-impact-select" />
-          <SelectField label="Effort" value={effort} options={EFFORTS} onChange={setEffort} testId="change-effort-select" />
-          <SelectField label="Nature" value={nature} options={NATURES} onChange={setNature} testId="change-nature-select" />
+      <form onSubmit={submit} className="space-y-4">
+        {/* 3-Column Grid Container (2/3 Left, 1/3 Right) */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          
+          {/* Left Column: Text Fields (Takes up 2 out of 3 columns) */}
+          <div className="space-y-4 md:col-span-2">
+            <TextField label="Title" value={title} onChange={setTitle} placeholder="e.g. Regulatory shift in EU" testId="change-title-input" />
+            <TextField label="What was detected?" value={detect} onChange={setDetect} placeholder="Describe the signal…" multiline />
+            <TextField label="Assessment" value={assess} onChange={setAssess} placeholder="Initial analysis…" multiline />
+            <TextField label="Response plan" value={respond} onChange={setRespond} placeholder="Planned response…" multiline />
+          </div>
+
+          {/* Right Column: Parameters (Takes up 1 out of 3 columns) */}
+          <div className="flex flex-col gap-4 md:border-l md:border-border md:pl-8">
+            <SelectField label="Nature" value={nature} options={NATURES} onChange={setNature} testId="change-nature-select" />
+            <SelectField label="Category / Quadrant" value={category} options={QUADRANTS} onChange={setCategory} testId="change-category-select" />
+            <SelectField label="Lifecycle state" value={lifecycle} options={STATES} onChange={setLifecycle} testId="change-lifecycle-select" />
+            <SelectField label="Impact" value={impact} options={IMPACTS} onChange={setImpact} testId="change-impact-select" />
+            <SelectField label="Effort" value={effort} options={EFFORTS} onChange={setEffort} testId="change-effort-select" />
+          </div>
+
         </div>
-        <TextField label="Assessment" value={assess} onChange={setAssess} placeholder="Initial analysis…" multiline />
-        <TextField label="Response plan" value={respond} onChange={setRespond} placeholder="Planned response…" multiline />
+
+        {/* Bottom Information Bar & Actions */}
         <div className="rounded-md border border-border bg-background/40 p-3 text-[11px] text-muted-foreground">
           Radar mapping: <strong className="text-foreground">{category}</strong> quadrant · ring{" "}
           <strong className="text-foreground">{lifecycle}</strong> · {impact} impact · {effort} effort ·{" "}
           {nature === "THREAT" ? "triangle" : "circle"}
         </div>
-        <ActionRow onCancel={onClose} submitLabel={isEdit ? "Save changes" : "Detect change"} loading={loading} testIdPrefix={isEdit ? "edit-change" : "new-change"} />
+        
+        <ActionRow onCancel={onClose} submitLabel={isEdit ? "Save changes" : "Detect change"} loading={loading} />
       </form>
-    </Modal>
+    </Modal>  
   );
 }
 

@@ -10,7 +10,7 @@ import { STRATEGY_STATES, strategyStateMeta, toStrategyState } from "../lib/stra
  *        4-step kanban inside).
  */
 export function StrategyTile({
-  orgId, teamId, strategy, accentColor, expanded, onToggle, onStateChange, onToast,
+  orgId, teamId, strategy, changes, accentColor, expanded, onToggle, onStateChange, onToast,
 }) {
   const state = toStrategyState(strategy.strategyState);
   const dim = state === "OBSOLETE" || state === "DELETED" || state === "COMPLETE";
@@ -66,6 +66,7 @@ export function StrategyTile({
             orgId={orgId}
             teamId={teamId}
             strategy={strategy}
+            changes={changes}
             accentColor={accentColor}
             onToast={onToast}
           />

@@ -173,6 +173,20 @@ export const api = {
         generateId(),
       ),
   },
+  initiativeEnvChangeTags: {
+    list: (initiativeId) =>
+      request("GET", `/api/query/initiative-env-change-tags?initiativeId=${encodeURIComponent(initiativeId)}`),
+    create: (initiativeId, organizationId, envChangeId, envChangeTitle) =>
+      request("POST", `/api/initiatives/${encodeURIComponent(initiativeId)}/tags`,
+        { organizationId, envChangeId, envChangeTitle },
+        initiativeId,
+      ),
+    remove: (initiativeId, envChangeId) =>
+      request("DELETE", `/api/initiatives/${encodeURIComponent(initiativeId)}/tags/${encodeURIComponent(envChangeId)}`,
+        undefined,
+        initiativeId,
+      ),
+  },
   initiativeItems: {
     list: (initiativeId) =>
       request("GET", `/api/query/initiative-items?initiativeId=${encodeURIComponent(initiativeId)}`),

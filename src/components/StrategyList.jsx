@@ -12,7 +12,7 @@ import { strategyStateMeta, toStrategyState } from "../lib/strategy-model";
  *   History  → Complete / Obsolete / Deleted (collapsed by default)
  */
 export function StrategyList({
-  orgId, teamId, strategies, accentColor, onCreate, onReload, onToast, loading,
+  orgId, teamId, strategies, changes, accentColor, onCreate, onReload, onToast, loading,
 }) {
   const [expanded, setExpanded] = useState(null);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -34,6 +34,7 @@ export function StrategyList({
       orgId={orgId}
       teamId={teamId}
       strategy={s}
+      changes={changes}
       accentColor={accentColor}
       expanded={expanded === s.strategyId}
       onToggle={() => setExpanded((e) => (e === s.strategyId ? null : s.strategyId))}

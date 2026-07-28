@@ -221,6 +221,7 @@ export default function TeamPage() {
                   orgId={orgId}
                   teamId={teamId}
                   strategies={strategies}
+                  changes={changes}
                   accentColor="var(--section-strategy)"
                   loading={loading}
                   onCreate={() => setShowNewStrategy(true)}

@@ -1,16 +1,19 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, VALID_INITIATIVE_ITEM_STEPS } from "../lib/stradar-api";
-import { ChevronDown, Loader2, Plus } from "lucide-react";
+import { quadrantColor, toQuadrant } from "../lib/radar-model";
+import { ChevronDown, Loader2, Plus, Tag, X } from "lucide-react";
 
 /**
  * InitiativesList — under a strategy tile: each initiative is a collapsible row.
- * Expanded row shows the 4-step kanban (DIAGNOSTIC → OVERALL APPROACH →
- * COHERENT SET OF ACTIONS → PROXIMATE OBJECTIVES) with process arrows.
+ * Expanded row shows environmental-change tags plus the 4-step kanban
+ * (DIAGNOSTIC → OVERALL APPROACH → COHERENT SET OF ACTIONS → PROXIMATE
+ * OBJECTIVES) with process arrows.
  */
-export function InitiativesList({ orgId, teamId, strategy, accentColor, onToast }) {
+export function InitiativesList({ orgId, teamId, strategy, changes, accentColor, onToast }) {
   const strategyId = strategy.strategyId;
   const [initiatives, setInitiatives] = useState([]);
   const [items, setItems] = useState({}); // by initiativeId
+  const [tags, setTags] = useState({}); // by initiativeId
   const [expanded, setExpanded] = useState(null);
   const [showNew, setShowNew] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -27,8 +30,18 @@ export function InitiativesList({ orgId, teamId, strategy, accentColor, onToast 
     setItems((prev) => ({ ...prev, [initiativeId]: r.ok && Array.isArray(r.body) ? r.body : [] }));
   }, []);
 
+  const loadTags = useCallback(async (initiativeId) => {
+    const r = await api.initiativeEnvChangeTags.list(initiativeId);
+    setTags((prev) => ({ ...prev, [initiativeId]: r.ok && Array.isArray(r.body) ? r.body : [] }));
+  }, []);
+
   useEffect(() => { loadInitiatives(); }, [loadInitiatives]);
-  useEffect(() => { if (expanded) loadItems(expanded); }, [expanded, loadItems]);
+  useEffect(() => {
+    if (expanded) {
+      loadItems(expanded);
+      loadTags(expanded);
+    }
+  }, [expanded, loadItems, loadTags]);
 
   if (loading) {
     return (
@@ -76,6 +89,7 @@ export function InitiativesList({ orgId, teamId, strategy, accentColor, onToast 
           {initiatives.map((i) => {
             const isOpen = expanded === i.initiativeId;
             const initItems = items[i.initiativeId] || [];
+            const initTags = tags[i.initiativeId] || [];
             return (
               <li
                 key={i.initiativeId}
@@ -112,6 +126,14 @@ export function InitiativesList({ orgId, teamId, strategy, accentColor, onToast 
                   >
                     {i.initiativeName}
                   </span>
+                  {!isOpen && initTags.length > 0 && (
+                    <span
+                      className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-mono tabular-nums text-muted-foreground"
+                      title={`${initTags.length} environmental change tag${initTags.length === 1 ? "" : "s"}`}
+                    >
+                      <Tag size={10} /> {initTags.length}
+                    </span>
+                  )}
                   {isOpen && initItems.length > 0 && (
                     <span className="text-[10px] font-mono tabular-nums text-muted-foreground">
                       {initItems.length} item{initItems.length === 1 ? "" : "s"}
@@ -131,6 +153,14 @@ export function InitiativesList({ orgId, teamId, strategy, accentColor, onToast 
                     className="border-t p-3 fade-up"
                     style={{ borderColor: `color-mix(in oklch, ${accentColor} 30%, transparent)` }}
                   >
+                    <TagsRow
+                      orgId={orgId}
+                      initiativeId={i.initiativeId}
+                      changes={changes}
+                      tags={initTags}
+                      onReload={() => loadTags(i.initiativeId)}
+                      onToast={onToast}
+                    />
                     <Kanban
                       orgId={orgId}
                       teamId={teamId}
@@ -148,6 +178,105 @@ export function InitiativesList({ orgId, teamId, strategy, accentColor, onToast 
           })}
         </ul>
       )}
+    </div>
+  );
+}
+
+function TagsRow({ orgId, initiativeId, changes, tags, onReload, onToast }) {
+  const [open, setOpen] = useState(false);
+  const [tagging, setTagging] = useState(null); // envChangeId currently being submitted/removed
+
+  const taggedIds = new Set(tags.map((t) => t.envChangeId));
+  const available = (changes || []).filter((c) => !taggedIds.has(c.envChangeId));
+
+  const addTag = async (change) => {
+    setTagging(change.envChangeId);
+    const r = await api.initiativeEnvChangeTags.create(initiativeId, orgId, change.envChangeId, change.envChangeTitle);
+    setTagging(null);
+    if (!r.ok) return onToast?.(r.body?.error || r.error || "Failed to tag change", "err");
+    setOpen(false);
+    await onReload();
+  };
+
+  const removeTag = async (tag) => {
+    setTagging(tag.envChangeId);
+    const r = await api.initiativeEnvChangeTags.remove(initiativeId, tag.envChangeId);
+    setTagging(null);
+    if (!r.ok) return onToast?.(r.body?.error || r.error || "Failed to remove tag", "err");
+    await onReload();
+  };
+
+  return (
+    <div className="mb-3 flex flex-wrap items-center gap-1.5" data-testid={`tags-${initiativeId}`}>
+      {tags.map((t) => {
+        const match = (changes || []).find((c) => c.envChangeId === t.envChangeId);
+        const color = match ? quadrantColor[toQuadrant(match.category)] : "var(--muted-foreground)";
+        return (
+          <span
+            key={t.envChangeId}
+            className="group inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium"
+            style={{ borderColor: `color-mix(in oklch, ${color} 45%, transparent)`, color, background: `color-mix(in oklch, ${color} 12%, transparent)` }}
+            data-testid={`tag-${initiativeId}-${t.envChangeId}`}
+          >
+            <Tag size={9} /> {t.envChangeTitle}
+            <button
+              type="button"
+              disabled={tagging === t.envChangeId}
+              onClick={() => removeTag(t)}
+              className="ml-0.5 rounded-full opacity-60 transition hover:opacity-100 disabled:opacity-30"
+              title="Remove tag"
+              data-testid={`remove-tag-${initiativeId}-${t.envChangeId}`}
+            >
+              <X size={10} />
+            </button>
+          </span>
+        );
+      })}
+
+      <div className="relative">
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          className="inline-flex items-center gap-1 rounded-full border border-dashed border-border px-2 py-0.5 text-[10px] uppercase tracking-wider text-muted-foreground hover:bg-accent hover:text-foreground transition"
+          data-testid={`add-tag-${initiativeId}`}
+        >
+          <Plus size={10} /> Tag change
+        </button>
+        {open && (
+          <>
+            <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+            <ul
+              role="listbox"
+              className="absolute left-0 top-[calc(100%+4px)] z-50 max-h-64 w-64 overflow-auto rounded-lg border border-border bg-popover shadow-2xl fade-up"
+              data-testid={`tag-menu-${initiativeId}`}
+            >
+              {available.length === 0 ? (
+                <li className="px-3 py-2 text-[11px] text-muted-foreground">
+                  {(changes || []).length === 0 ? "No environmental changes yet." : "All changes already tagged."}
+                </li>
+              ) : (
+                available.map((c) => (
+                  <li key={c.envChangeId}>
+                    <button
+                      type="button"
+                      disabled={tagging === c.envChangeId}
+                      onClick={() => addTag(c)}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs transition hover:bg-accent disabled:opacity-50"
+                      data-testid={`tag-option-${initiativeId}-${c.envChangeId}`}
+                    >
+                      <span
+                        className="h-1.5 w-1.5 shrink-0 rounded-full"
+                        style={{ background: quadrantColor[toQuadrant(c.category)] }}
+                      />
+                      <span className="flex-1 truncate">{c.envChangeTitle}</span>
+                    </button>
+                  </li>
+                ))
+              )}
+            </ul>
+          </>
+        )}
+      </div>
     </div>
   );
 }

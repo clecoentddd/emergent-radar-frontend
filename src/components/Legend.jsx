@@ -1,4 +1,4 @@
-import { EFFORTS, IMPACTS, effortRadius, impactColor } from "../lib/radar-model";
+import { EFFORTS, IMPACTS, effortColor, impactRadius } from "../lib/radar-model";
 
 export function Legend() {
   return (
@@ -6,24 +6,24 @@ export function Legend() {
       <div className="mb-3 text-sm font-semibold tracking-wide">Legend</div>
       <div className="space-y-3">
         <div>
-          <div className="mb-1.5 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Impact · color</div>
-          <div className="flex gap-3">
-            {IMPACTS.map((i) => (
+          <div className="mb-1.5 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Value / Impact · size</div>
+          <div className="flex items-end gap-3">
+            {IMPACTS.slice().reverse().map((i) => (
               <div key={i} className="flex items-center gap-1.5">
-                <span className="h-3 w-3 rounded-full ring-1 ring-white/20" style={{ background: impactColor[i] }} />
+                <svg width={impactRadius[i] * 2 + 2} height={impactRadius[i] * 2 + 2}>
+                  <circle cx={impactRadius[i] + 1} cy={impactRadius[i] + 1} r={impactRadius[i]} fill="var(--muted-foreground)" />
+                </svg>
                 <span>{i}</span>
               </div>
             ))}
           </div>
         </div>
         <div>
-          <div className="mb-1.5 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Effort · size</div>
-          <div className="flex items-end gap-3">
-            {EFFORTS.slice().reverse().map((e) => (
+          <div className="mb-1.5 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Feasibility / Effort · color</div>
+          <div className="flex gap-3">
+            {EFFORTS.map((e) => (
               <div key={e} className="flex items-center gap-1.5">
-                <svg width={effortRadius[e] * 2 + 2} height={effortRadius[e] * 2 + 2}>
-                  <circle cx={effortRadius[e] + 1} cy={effortRadius[e] + 1} r={effortRadius[e]} fill="var(--muted-foreground)" />
-                </svg>
+                <span className="h-3 w-3 rounded-full ring-1 ring-white/20" style={{ background: effortColor[e] }} />
                 <span>{e}</span>
               </div>
             ))}

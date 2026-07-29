@@ -15,13 +15,15 @@ export const stateRatio = {
   RESPONDED: 0,
 };
 
-export const impactColor = {
-  HIGH: "var(--impact-high)",
-  MEDIUM: "var(--impact-medium)",
+// Color = feasibility, derived from effort: low effort → green (easy win), high effort → red (hard to pull off)
+export const effortColor = {
   LOW: "var(--impact-low)",
+  MEDIUM: "var(--impact-medium)",
+  HIGH: "var(--impact-high)",
 };
 
-export const effortRadius = {
+// Size = value/impact: high impact → large, low impact → small
+export const impactRadius = {
   LOW: 6,
   MEDIUM: 9,
   HIGH: 13,

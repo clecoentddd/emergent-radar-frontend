@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { api, clearAllAuth, generateId, getConfig } from "../lib/stradar-api";
 import {
   EFFORTS, IMPACTS, NATURES, QUADRANTS, STATES,
-  impactColor, quadrantColor,
+  effortColor, quadrantColor,
   toEffort, toImpact, toNature, toQuadrant, toState,
 } from "../lib/radar-model";
 import { AppHeader } from "../components/AppHeader";
@@ -253,6 +253,7 @@ export default function TeamPage() {
               )}
               {changes.filter((c) => toQuadrant(c.category) === zoomed).map((c) => {
                 const impact = toImpact(c.impact);
+                const effort = toEffort(c.effort);
                 return (
                   <button
                     key={c.envChangeId}
@@ -261,11 +262,11 @@ export default function TeamPage() {
                     data-testid={`zoom-change-${c.envChangeId}`}
                   >
                     <div className="flex items-center gap-2">
-                      <span className="h-2.5 w-2.5 rounded-full" style={{ background: impactColor[impact] }} />
+                      <span className="h-2.5 w-2.5 rounded-full" style={{ background: effortColor[effort] }} />
                       <div className="flex-1 truncate text-sm font-medium">{c.envChangeTitle}</div>
                     </div>
                     <div className="mt-1 text-[11px] text-muted-foreground">
-                      {toNature(c.nature)} · {toState(c)} · {impact} impact · {toEffort(c.effort)} effort
+                      {toNature(c.nature)} · {toState(c)} · {impact} impact · {effort} effort
                     </div>
                   </button>
                 );

@@ -2,8 +2,8 @@ import { useMemo, useState } from "react";
 import {
   QUADRANTS,
   STATES,
-  effortRadius,
-  impactColor,
+  effortColor,
+  impactRadius,
   quadrantAngles,
   quadrantColor,
   stateRatio,
@@ -61,8 +61,8 @@ export function Radar({
         change: c,
         quadrant,
         x, y,
-        color: impactColor[impact],
-        radius: effortRadius[effort],
+        color: effortColor[effort],
+        radius: impactRadius[impact],
         nature,
         state,
       };
@@ -234,7 +234,7 @@ export function Radar({
         >
           <div className="font-semibold text-popover-foreground">{hover.change.envChangeTitle}</div>
           <div className="mt-1 text-muted-foreground">
-            {hover.quadrant} · {hover.state} · {toImpact(hover.change.impact)} impact · {toNature(hover.change.nature)}
+            {hover.quadrant} · {hover.state} · {toImpact(hover.change.impact)} impact · {toEffort(hover.change.effort)} effort · {toNature(hover.change.nature)}
           </div>
         </div>
       )}
